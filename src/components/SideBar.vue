@@ -29,7 +29,15 @@
         <span>All Doctors</span>
         <span class="chip">{{ countDoctors }}</span>
       </button>
-
+      <button
+        class="nav-btn"
+        :class="{ active: currentView === 'chatbots' }"
+        @click="$emit('navigate', 'chatbots')"
+       >
+        <i class="fas fa-comments"></i>
+        <span>All Chatbots</span>
+        <span class="chip">17</span>
+      </button>
       <p class="nav-label">Shortcuts</p>
       <button class="nav-btn" @click="$emit('navigate', 'doctors')">
         <i class="fas fa-stethoscope"></i>

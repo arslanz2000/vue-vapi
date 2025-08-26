@@ -33,9 +33,9 @@
                   <i class="fas fa-user-md"></i>
                   Browse AI Physicians
                 </button>
-                <button class="ghost" @click="setView('doctors')">
-                  <i class="fas fa-bolt"></i>
-                  Quick consult
+                <button class="ghost" @click="setView('chatbots')">
+                  <i class="fas fa-comments"></i>
+                  Browse AI Chatbots
                 </button>
               </div>
             </div>
@@ -78,7 +78,7 @@
           </div>
         </section>
 
-        <!-- DOCTORS VIEW -->
+        <!-- DOCTORS (Voice) VIEW -->
         <section v-else-if="currentView === 'doctors'" class="doctors">
           <Suspense>
             <template #default>
@@ -88,6 +88,36 @@
               <div class="loading-card">
                 <div class="spinner"></div>
                 Loading doctors…
+              </div>
+            </template>
+          </Suspense>
+        </section>
+
+        <!-- CHATBOTS (Cards) VIEW -->
+        <section v-else-if="currentView === 'chatbots'" class="doctors">
+          <Suspense>
+            <template #default>
+              <VapiChatHub @openChat="id => setView(`chat:${id}`)" />
+            </template>
+            <template #fallback>
+              <div class="loading-card">
+                <div class="spinner"></div>
+                Loading chatbots…
+              </div>
+            </template>
+          </Suspense>
+        </section>
+
+        <!-- SINGLE CHAT VIEW -->
+        <section v-else-if="currentView === 'chat'" class="chatbots">
+          <Suspense>
+            <template #default>
+              <VapiChat :initial-bot-id="currentChatBotId" />
+            </template>
+            <template #fallback>
+              <div class="loading-card">
+                <div class="spinner"></div>
+                Loading chat…
               </div>
             </template>
           </Suspense>
@@ -123,13 +153,35 @@ import Sidebar from './components/SideBar.vue'
 import Topbar from './components/Topbar.vue'
 import FooterBar from './components/FooterBar.vue'
 
-const VapiAssistant = defineAsyncComponent(() => import('./components/VapiAssistant.vue'))
+// Async views/components
+const VapiAssistant = defineAsyncComponent(() => import('./components/VapiAssistant.vue')) // voice cards
+const VapiChat = defineAsyncComponent(() => import('./components/VapiChat.vue'))           // single chat
+const VapiChatHub = defineAsyncComponent(() => import('./components/VapiChatHub.vue'))     // chatbot cards
 
+// Nav + view state
 const sidebarOpen = ref(true)
-const currentView = ref('home')
+const currentView = ref('home')         // 'home' | 'doctors' | 'chatbots' | 'chat'
+const currentChatBotId = ref('')        // used by 'chat' view to load a bot
+
+// Navigate helper
+function setView(view) {
+  if (typeof view === 'string' && view.startsWith('chat:')) {
+    currentChatBotId.value = view.split(':')[1] || ''
+    currentView.value = 'chat'
+  } else {
+    currentView.value = view
+  }
+}
+
 const countDoctors = 17
-const pageTitle = computed(() => (currentView.value === 'doctors' ? 'AI Physicians' : 'Dashboard'))
-function setView(view) { currentView.value = view }
+const pageTitle = computed(() => {
+  switch (currentView.value) {
+    case 'doctors':  return 'AI Physicians'
+    case 'chatbots': return 'AI Chatbots'
+    case 'chat':     return 'Chat'
+    default:         return 'Dashboard'
+  }
+})
 
 /* THEME */
 const theme = ref('light') // 'light' | 'dark'
@@ -174,7 +226,7 @@ watch(theme, (val) => {
 html.dark {
   --bg: linear-gradient(180deg, #1f2937 0%, #111827 100%);
   --panel: rgba(17,24,39,0.7);
-  --panel-solid: #111827;      /* slightly deeper to avoid haze */
+  --panel-solid: #111827;
   --border: #374151;
   --text: #f9fafb;
   --muted: #9ca3af;
@@ -182,12 +234,10 @@ html.dark {
   --brand-2: #2563eb;
   --accent: #f87171;
 
-  /* Dark-mode utility tokens */
   --ring: #42526b;
   --ghost-bg: #111827;
   --ghost-bg-hover: #0f172a;
 
-  /* Dark shadows should be deeper/softer */
   --shadow-1: 0 8px 18px rgba(0,0,0,.35);
   --shadow-2: 0 14px 40px rgba(0,0,0,.45);
 }
@@ -208,7 +258,7 @@ html, body, #app { height: 100%; }
 }
 
 /* Main */
-.main { display: grid; grid-template-rows: auto 1fr auto; } /* footer after content */
+.main { display: grid; grid-template-rows: auto 1fr auto; }
 
 /* Content container */
 .content { padding: 18px; max-width: 1400px; width: 100%; }
@@ -223,7 +273,6 @@ html, body, #app { height: 100%; }
 .hero p { margin: 0 0 14px; color: var(--muted); }
 .hero-actions { display: flex; gap: 10px; }
 
-/* Buttons used in hero (Topbar has its own scoped button styles) */
 .ghost, .primary {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 9px 12px; border-radius: 12px; cursor: pointer;
@@ -260,15 +309,13 @@ html, body, #app { height: 100%; }
   border: 1px solid var(--ring); background: var(--panel-solid);
   border-radius: 14px; box-shadow: var(--shadow-1);
 }
-html.dark .panel h3 {
-  color: #06b6d4; /* aqua */
-}
+html.dark .panel h3 { color: #06b6d4; }
 .panel h3 { margin: 0 0 8px; }
 .panel ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; color: var(--muted); }
 .panel li { display: flex; gap: 8px; align-items: center; }
 .panel i { width: 18px; text-align: center; color: #0ea5e9; }
 
-/* Doctors view */
+/* Doctors or Chatbots grid container shares same class for layout */
 .loading-card {
   display: flex; align-items: center; gap: 10px; padding: 16px;
   border: 1px solid var(--ring); border-radius: 14px;
@@ -292,7 +339,6 @@ html.dark .panel h3 {
 @media (max-width: 768px) { .hero { grid-template-columns: 1fr; } }
 @media (max-width: 720px) {
   .app-shell { grid-template-columns: 1fr; }
-  /* Let Sidebar keep its theme surfaces (no forced gradient). */
   :deep(.sidebar) {
     position: fixed; left: 0; transform: translateX(-100%);
     transition: transform .2s ease; z-index: 50; width: 240px; background: var(--panel);
