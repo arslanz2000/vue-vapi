@@ -202,16 +202,18 @@ async function startSession() {
     })
 
     // Ask server to send both conversation + streaming signals
-    await vapi.start(bot.value.assistantId, {
-      clientMessages: [
-        'conversation-update',
-        'response.create',
-        'response.output_text.delta',
-        'response.output_text.done',
-        'response.completed',
-        'status-update'
-      ]
-    })
+await vapi.start(bot.value.assistantId, {
+  // ✅ only supported values
+  clientMessages: [
+    'conversation-update',
+    'model-output',
+    'status-update',
+    // optionally keep these if you want, they won’t hurt:
+    'metadata',
+    'speech-update',  // we still suppress audio client-side
+    'transcript'      // not used for chat input, but harmless
+  ]
+})
 
     killAllAudioElements()
   } catch (err) {
