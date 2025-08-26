@@ -1,19 +1,16 @@
 <template>
   <div class="container">
-    <!-- Controls -->
     <div class="controls">
       <div class="search-box">
         <i class="fas fa-search search-icon"></i>
         <input type="text" v-model="searchQuery" placeholder="Search doctors by name or specialty..." />
       </div>
-
       <select class="filter-select" v-model="specialtyFilter">
         <option value="">All Specialties</option>
         <option v-for="specialty in uniqueSpecialties" :key="specialty" :value="specialty">
           {{ specialty }}
         </option>
       </select>
-
       <div class="filter-select" style="display:flex;align-items:center;gap:8px">
         <i class="fas fa-sliders-h"></i>
         Sort by:
@@ -22,67 +19,113 @@
           <option value="specialty">Specialty</option>
         </select>
       </div>
+      <div v-if="callActive" class="filter-select" style="display:flex;align-items:center;gap:10px">
+        <i class="fas fa-file-upload"></i>
+        <label class="btn" style="cursor:pointer;padding:10px 12px">
+          <input type="file" accept="application/pdf" @change="handlePdfToCall" style="display:none" />
+          Send PDF to Doctor
+        </label>
+        <small v-if="uploadingDoc">{{ uploadStatus }}</small>
+      </div>
     </div>
 
-    <h2 class="section-title">
-      <i class="fas fa-user-md"></i>
-      Available AI Physicians
-    </h2>
-
-    <!-- Cards -->
-    <section class="doctor-grid">
-      <div
-        v-for="(doctor, index) in filteredDoctors"
-        :key="doctor.id"
-        class="doctor-card fade-in"
-        :style="{ 'animation-delay': `${index * 0.05}s` }"
-      >
-        <div class="doctor-header">
-          <div class="doctor-avatar">
-            <i class="fas fa-user-md"></i>
-          </div>
-          <div class="doctor-info">
-            <p class="doctor-name">{{ doctor.name }}</p>
-            <p class="doctor-specialty">{{ doctor.specialty }}</p>
-          </div>
+    <section v-if="callActive" class="call-surface">
+      <div class="call-center">
+        <div class="vid-avatar">
+          <i class="fas fa-user-md"></i>
         </div>
-
-        <div class="doctor-details">
-          <div class="detail-item">
-            <div class="detail-icon">
-              <i class="fas fa-graduation-cap"></i>
-            </div>
-            <div>Board Certified in {{ doctor.specialty }}</div>
-          </div>
-
-          <div class="availability">
-            <div class="availability-dot"></div>
-            <div>Available now for consultation</div>
-          </div>
+        <h2 class="call-title">{{ currentDoctorName }}</h2>
+        <div class="call-timer-big">
+          <i class="fas fa-clock"></i>
+          {{ callTimer }}
         </div>
-
-        <div class="doctor-actions">
-          <button
-            class="btn btn--call"
-            @click="startCall(doctor)"
-            :disabled="callActive && activeDoctorId === doctor.id"
-          >
-            <i class="fas fa-phone-alt"></i>
-            {{ (callActive && activeDoctorId === doctor.id) ? 'In Call...' : 'Call' }}
+        <div class="call-cta-row">
+          <button class="round-cta" @click="toggleMute" :aria-pressed="isMuted">
+            <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
+            <span>{{ isMuted ? 'Unmute' : 'Mute' }}</span>
           </button>
-          <a
-            class="btn btn--book"
-            :href="`https://calendly.com/arslan-khan-icustoms/30min`"
-            target="_blank"
-          >
+          <button class="round-cta" @click="toggleSpeaker" :aria-pressed="isSpeakerOn">
+            <i class="fas" :class="isSpeakerOn ? 'fa-volume-up' : 'fa-volume-mute'"></i>
+            <span>{{ isSpeakerOn ? 'Speaker On' : 'Speaker Off' }}</span>
+          </button>
+          <button class="round-cta" @click="toggleHold" :aria-pressed="isOnHold">
+            <i class="fas" :class="isOnHold ? 'fa-play' : 'fa-pause'"></i>
+            <span>{{ isOnHold ? 'Resume' : 'Hold' }}</span>
+          </button>
+          <button class="round-cta end" @click="stopCall" aria-label="End Call">
+            <i class="fas fa-phone-slash"></i>
+            <span>End</span>
+          </button>
+          <button class="round-cta consult" @click="openConsultation" aria-label="Book Consultation">
             <i class="fas fa-calendar-alt"></i>
-            Consultation
-          </a>
+            <span>Consultation</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-wrap">
+        <div class="bubble-list" ref="captionsEl" aria-live="polite" aria-atomic="false">
+          <div v-for="(c, i) in captions" :key="c.ts + '-' + i" class="bubble" :data-role="c.role">
+            <div class="bubble-meta">{{ c.role === 'assistant' ? 'Doctor' : 'You' }}</div>
+            <div class="bubble-text">
+              {{ c.text }}
+              <span v-if="!c.final" class="cap-interim">…</span>
+            </div>
+          </div>
+          <div class="upload-row">
+            <label class="attach-btn">
+              <i class="fas fa-file-upload"></i>
+              <span>Send PDF to Doctor</span>
+              <input type="file" accept="application/pdf" @change="handlePdfToCall" />
+            </label>
+            <small v-if="uploadingDoc" class="upload-status">{{ uploadStatus }}</small>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Active call toast -->
+    <template v-else>
+      <h2 class="section-title">
+        <i class="fas fa-user-md"></i>
+        Available AI Physicians
+      </h2>
+      <section class="doctor-grid">
+        <div v-for="(doctor, index) in filteredDoctors" :key="doctor.id" class="doctor-card fade-in" :style="{ 'animation-delay': `${index * 0.05}s` }">
+          <div class="doctor-header">
+            <div class="doctor-avatar">
+              <i class="fas fa-user-md"></i>
+            </div>
+            <div class="doctor-info">
+              <p class="doctor-name">{{ doctor.name }}</p>
+              <p class="doctor-specialty">{{ doctor.specialty }}</p>
+            </div>
+          </div>
+          <div class="doctor-details">
+            <div class="detail-item">
+              <div class="detail-icon">
+                <i class="fas fa-graduation-cap"></i>
+              </div>
+              <div>Board Certified in {{ doctor.specialty }}</div>
+            </div>
+            <div class="availability">
+              <div class="availability-dot"></div>
+              <div>Available now for consultation</div>
+            </div>
+          </div>
+          <div class="doctor-actions">
+            <button class="btn btn--call" @click="startCall(doctor)" :disabled="callActive && activeDoctorId === doctor.id">
+              <i class="fas fa-phone-alt"></i>
+              {{ (callActive && activeDoctorId === doctor.id) ? 'In Call...' : 'Call' }}
+            </button>
+            <a class="btn btn--book" :href="`https://calendly.com/arslan-khan-icustoms/30min`" target="_blank">
+              <i class="fas fa-calendar-alt"></i>
+              Consultation
+            </a>
+          </div>
+        </div>
+      </section>
+    </template>
+
     <aside v-if="callActive" class="active-call" role="status" aria-live="polite">
       <p class="active-call__text">
         <i class="fas fa-phone-alt"></i>
@@ -100,7 +143,6 @@
       </div>
     </aside>
 
-    <!-- Status line -->
     <p v-if="status && !callActive" class="status">
       <span v-if="statusLoading" class="loading">
         <span>{{ status }}</span>
@@ -111,50 +153,25 @@
       <span v-else>{{ status }}</span>
     </p>
 
-    <!-- Call popup -->
-    <div v-if="callState !== 'idle'" class="call-popup-overlay">
+    <!-- End-of-call popup -->
+    <div v-if="showTranscriptPrompt" class="call-popup-overlay" role="dialog" aria-modal="true">
       <div class="call-popup">
         <div class="call-header">
-          <div class="call-avatar">
-            <i class="fas fa-user-md"></i>
-          </div>
+          <div class="call-avatar"><i class="fas fa-file-alt"></i></div>
           <div class="call-info">
-            <h3>{{ currentDoctorName }}</h3>
-            <p v-if="callState === 'calling'">Calling...</p>
-            <p v-else>{{ callTimer }}</p>
+            <h3>Download summary?</h3>
+            <p>We compiled your call with <strong>{{ currentDoctorName }}</strong> ({{ lastCallTimer }}).</p>
           </div>
         </div>
-
-        <div v-if="callState === 'calling'" class="progress-container">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: callProgress + '%' }"></div>
-          </div>
-          <p>{{ callProgress }}% connecting...</p>
-        </div>
-
-        <div v-if="callState === 'active'" class="call-controls">
-          <button class="control-btn" @click="toggleMute">
-            <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
-            <span>{{ isMuted ? 'Unmute' : 'Mute' }}</span>
+        <div class="call-actions" style="gap:12px">
+          <button class="end-call-btn"
+                  @click="downloadSummary"
+                  :disabled="summarizing"
+                  aria-label="Summarize & Download">
+            <i class="fas" :class="summarizing ? 'fa-spinner fa-spin' : 'fa-file-alt'"></i>
           </button>
-          <button class="control-btn" @click="toggleSpeaker">
-            <i class="fas" :class="isSpeakerOn ? 'fa-volume-up' : 'fa-volume-mute'"></i>
-            <span>{{ isSpeakerOn ? 'Speaker On' : 'Speaker Off' }}</span>
-          </button>
-          <button class="control-btn" @click="toggleHold">
-            <i class="fas" :class="isOnHold ? 'fa-play' : 'fa-pause'"></i>
-            <span>{{ isOnHold ? 'Resume' : 'Hold' }}</span>
-          </button>
-        </div>
-
-        <div class="call-actions">
-          <button v-if="callState === 'calling'" class="cancel-btn" @click="cancelCall">
-            <i class="fas fa-times"></i>
-            Cancel
-          </button>
-
-          <button v-if="callState === 'active'" class="end-call-btn" @click="stopCall">
-            <i class="fas fa-phone-slash"></i>
+          <button class="cancel-btn" @click="showTranscriptPrompt = false">
+            <i class="fas fa-times"></i> Dismiss
           </button>
         </div>
       </div>
@@ -163,8 +180,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import Vapi from '@vapi-ai/web'
+import * as pdfjsLib from 'pdfjs-dist'
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url
+).toString()
 
 const PUBLIC_KEY = 'c9773d29-c83b-4903-959a-d40a77793396'
 let vapi
@@ -204,6 +227,23 @@ const isMuted = ref(false)
 const isSpeakerOn = ref(false)
 const isOnHold = ref(false)
 
+const captions = ref([]) 
+const captionsEl = ref(null)
+
+const uploadingDoc = ref(false)
+const uploadStatus = ref('')
+
+// transcript & metadata
+const finalTranscript = ref([])          // [{ role:'user'|'assistant', text:'...' }]
+const showTranscriptPrompt = ref(false)  // popup
+const callStartedAt = ref(null)          // header metadata
+const lastCallTimer = ref('00:00')       // snapshot at end
+
+// summary UI state
+const summarizing = ref(false)
+const CONSULTATION_URL = 'https://calendly.com/arslan-khan-icustoms/30min'
+const suppressSummaryPopup = ref(false)
+
 const currentDoctorName = computed(() => {
   const doctor = doctors.value.find(d => d.id === activeDoctorId.value)
   return doctor ? `${doctor.name} (${doctor.specialty})` : ''
@@ -227,12 +267,41 @@ const filteredDoctors = computed(() => {
   return result
 })
 
+const activeBubbleIdx = ref({ user: null, assistant: null })
+
+function addCaption(role, text, final = false) {
+  if (!text || !text.trim()) return
+  const key = role === 'assistant' ? 'assistant' : 'user'
+  const idx = activeBubbleIdx.value[key]
+  if (idx !== null && captions.value[idx] && !captions.value[idx].final) {
+    captions.value[idx].text = text
+    captions.value[idx].final = final
+    if (final) activeBubbleIdx.value[key] = null
+  } else {
+    const newIdx = captions.value.push({
+      role: key,
+      text,
+      ts: Date.now(),
+      final
+    }) - 1
+    if (!final) activeBubbleIdx.value[key] = newIdx
+  }
+  nextTick(() => {
+    if (captionsEl.value) captionsEl.value.scrollTop = captionsEl.value.scrollHeight
+  })
+}
+
 const startCall = async (doctor) => {
+  finalTranscript.value = []
+  showTranscriptPrompt.value = false
+  callStartedAt.value = new Date()
+
   activeDoctorId.value = doctor.id
   callState.value = 'calling'
   callProgress.value = 0
   status.value = `Connecting to ${doctor.name}...`
   statusLoading.value = true
+  captions.value = []
 
   const interval = setInterval(() => {
     if (callProgress.value < 100) callProgress.value += 10
@@ -240,7 +309,9 @@ const startCall = async (doctor) => {
   }, 300)
 
   try {
-    await vapi.start(doctor.assistantId)
+    await vapi.start(doctor.assistantId, {
+      clientMessages: ['transcript', 'conversation-update', 'status-update', 'speech-update']
+    })
     callState.value = 'active'
     callActive.value = true
     statusLoading.value = false
@@ -253,17 +324,108 @@ const startCall = async (doctor) => {
   }
 }
 
-const stopCall = () => {
-  vapi.stop()
+const handleCallEnd = () => {
   callState.value = 'idle'
   callActive.value = false
   clearInterval(timerInterval)
+  lastCallTimer.value = callTimer.value
   status.value = `Call ended with ${currentDoctorName.value}`
+  showTranscriptPrompt.value = !suppressSummaryPopup.value   // changed
+  suppressSummaryPopup.value = false                         // reset
   setTimeout(() => (status.value = ''), 5000)
 }
+function openConsultation() {
+  // prevent the summary popup for this path
+  suppressSummaryPopup.value = true
+  try { vapi?.stop() } catch (_) {}
+  // open in a new tab safely
+  window.open(CONSULTATION_URL, '_blank', 'noopener')
+}
+const stopCall = () => {
+  try { vapi?.stop() } catch (_) {}
+  handleCallEnd()
+}
+
+// ----- SUMMARY (client-only heuristic) -----
+async function downloadSummary() {
+  summarizing.value = true
+  try {
+    const doctor = currentDoctorName.value || 'Doctor'
+    const started = callStartedAt.value ? callStartedAt.value.toLocaleString() : ''
+    const duration = lastCallTimer.value || callTimer.value
+
+    const lines = buildTranscriptLines()
+    const summary = generateHeuristicSummary(lines)
+
+    const header = `Consultation Summary — ${doctor}\nStarted: ${started}\nDuration: ${duration}\n\n`
+    const content = header + (summary || 'Summary unavailable.') + '\n'
+
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const safeDoc = doctor.replace(/[^\w\-]+/g, '_')
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-')
+    const filename = `${safeDoc}__${stamp}__summary.md`
+
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    URL.revokeObjectURL(a.href)
+    a.remove()
+
+    showTranscriptPrompt.value = false
+  } finally {
+    summarizing.value = false
+  }
+}
+
+function buildTranscriptLines() {
+  const lines = finalTranscript.value.length
+    ? finalTranscript.value
+    : captions.value.map(c => ({ role: c.role === 'assistant' ? 'assistant' : 'user', text: (c.text || '').trim() }))
+  return lines.filter(l => l.text)
+}
+
+function generateHeuristicSummary(lines) {
+  const user = []
+  const doctor = []
+  for (const l of lines) (l.role === 'assistant' ? doctor : user).push(l.text)
+
+  const pick = (arr, limit = 5) => arr.filter(Boolean).slice(0, limit)
+
+  const concernKw = /(pain|ache|fever|cough|rash|dizzy|nausea|vomit|fatigue|headache|shortness of breath|symptom|issue|problem|concern|since|for\s+\d)/i
+  const chief = pick([...user.slice(0, 6), ...user.filter(t => concernKw.test(t))], 6)
+
+  const histKw = /(since|for|after|because|history|previous|past|months?|weeks?|days?|years?)/i
+  const history = pick(user.filter(t => histKw.test(t)), 6)
+
+  const adviceKw = /(should|recommend|advise|suggest|try|consider|monitor|avoid|increase|decrease|start|stop|take|use|apply)/i
+  const advice = pick(doctor.filter(t => adviceKw.test(t)), 8)
+
+  const nextKw = /(next|follow[- ]?up|book|schedule|test|lab|scan|x-ray|mri|refer|see|appointment|blood|results)/i
+  const next = pick(doctor.filter(t => nextKw.test(t)), 8)
+
+  const questions = pick(user.filter(t => t.includes('?')).slice(-6), 6)
+
+  const sec = (title, arr) =>
+`## ${title}
+${arr.length ? arr.map(t => `- ${t}`).join('\n') : '- (none noted)'}`
+
+  return [
+    '# Visit Summary',
+    (chief.length ? chief : doctor.slice(0, 4)).slice(0, 6).map(t => `- ${t}`).join('\n') || '- (no highlights captured)',
+    sec('Chief Concerns / Symptoms', chief),
+    sec('History & Context', history),
+    sec('Advice Given (non-diagnostic)', advice),
+    sec('Next Steps / Follow-up', next),
+    sec('Questions for Next Visit', questions)
+  ].join('\n\n')
+}
+
+// --------------------------------
 
 const cancelCall = () => {
-  vapi.stop()
+  try { vapi?.stop() } catch (_) {}
   callState.value = 'idle'
   callActive.value = false
   status.value = 'Call canceled'
@@ -275,7 +437,7 @@ const toggleSpeaker = () => { isSpeakerOn.value = !isSpeakerOn.value }
 const toggleHold = () => { isOnHold.value = !isOnHold.value }
 
 const handleVapiError = (err) => {
-  const msg = typeof err === 'string' ? err : err.message || String(err)
+  const msg = typeof err === 'string' ? err : err?.message || String(err)
   console.error('VAPI error:', msg)
   status.value = `Error: ${msg}`
 }
@@ -295,16 +457,138 @@ const startCallTimer = () => {
 
 onMounted(() => {
   vapi = new Vapi(PUBLIC_KEY)
-  vapi.on('call-start', () => { callState.value = 'active'; startCallTimer() })
-  vapi.on('call-end', () => { stopCall() })
-  vapi.on('error', e => { handleVapiError(e.error?.message || String(e.error)) })
+  vapi.on('call-start', () => { callState.value = 'active'; callActive.value = true; startCallTimer() })
+  vapi.on('call-end', () => { handleCallEnd() })
+  vapi.on('error', e => { handleVapiError(e?.error?.message || String(e?.error || e)) })
+
+  vapi.on('message', (m) => {
+    if (!m || !m.type) return
+
+    if (m.type === 'transcript') {
+      const role = m.role === 'assistant' ? 'assistant' : 'user'
+      const text = (m.transcript || '').trim()
+      const final = m?.transcriptType ? (m.transcriptType === 'final') : !!m?.isFinal
+
+      addCaption(role, text, final)
+
+      if (final && text) {
+        finalTranscript.value.push({ role, text })
+      }
+    }
+
+    if (m.type === 'conversation-update' && Array.isArray(m.conversation?.messages)) {
+      const last = m.conversation.messages[m.conversation.messages.length - 1]
+      if (last && last.role && typeof last.content === 'string') {
+        const role = last.role === 'assistant' ? 'assistant' : 'user'
+        const text = (last.content || '').trim()
+        if (!text) return
+
+        addCaption(role, text, true)
+
+        const prev = finalTranscript.value[finalTranscript.value.length - 1]
+        if (!prev || prev.text !== text || prev.role !== role) {
+          finalTranscript.value.push({ role, text })
+        }
+      }
+    }
+  })
+
   status.value = 'Platform initialized. Select a doctor to start a call.'
   setTimeout(() => (status.value = ''), 5000)
 })
+
+// -------- PDF helpers --------
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  let out = []
+  let charCount = 0
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const txt = await page.getTextContent()
+    const pageText = txt.items.map(t => t.str).join(" ")
+      .replace(/\s+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+    out.push(`\n\n--- Page ${i} of ${pdf.numPages} ---\n${pageText}`)
+    charCount += pageText.length
+  }
+
+  let text = out.join("")
+  if (charCount < 200) {
+    text += "\n\n[Note: Very little text was extracted — this PDF might be scanned/images. Consider OCR first.]"
+  }
+  return text.trim()
+}
+function splitIntoChunks(str, chunkSize = 6000) {
+  const chunks = []
+  let i = 0
+  while (i < str.length) {
+    let end = Math.min(i + chunkSize, str.length)
+    const windowStart = Math.max(i, end - 400)
+    const nl = str.lastIndexOf('\n', end)
+    const safeBreak = nl >= windowStart ? nl : end
+    chunks.push(str.slice(i, safeBreak))
+    i = safeBreak
+  }
+  return chunks.filter(Boolean)
+}
+async function sendTextIntoCall(text, filename) {
+  if (!callActive.value) throw new Error("No active call")
+
+  const CHUNK_SIZE = 6000
+  const PAUSE_MS = 350
+
+  const header = `User uploaded "${filename}". Use the following content to assist.`
+  vapi.send({
+    type: "add-message",
+    message: { role: "user", content: header },
+  })
+  addCaption("user", header, true)
+
+  const chunks = splitIntoChunks(text, CHUNK_SIZE)
+  for (let i = 0; i < chunks.length; i++) {
+    uploadStatus.value = `Sending PDF text… (${i + 1}/${chunks.length})`
+    vapi.send({
+      type: "add-message",
+      message: { role: "user", content: chunks[i] },
+    })
+    addCaption("user", `[PDF chunk ${i + 1}/${chunks.length}]`, true)
+    await new Promise(r => setTimeout(r, PAUSE_MS))
+  }
+
+  uploadStatus.value = "Done"
+  setTimeout(() => (uploadStatus.value = ""), 1500)
+}
+async function handlePdfToCall(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (!callActive.value) {
+    status.value = "Start a call first, then upload."
+    return
+  }
+
+  try {
+    uploadingDoc.value = true
+    uploadStatus.value = "Extracting text…"
+    const text = await extractPdfText(file)
+
+    const promptHeader =
+      `Please incorporate the uploaded document while helping me.\n` +
+      `If relevant, summarize key points first, then answer follow-ups.\n`
+
+    await sendTextIntoCall(`${promptHeader}\n${text}`, file.name)
+  } catch (err) {
+    console.error(err)
+    status.value = `Upload error: ${err?.message || err}`
+  } finally {
+    uploadingDoc.value = false
+    e.target.value = ''
+  }
+}
 </script>
 
 <style scoped>
-/* ========= call modal (theme-aware) ========= */
 .call-popup-overlay {
   position: fixed; inset: 0;
   background: rgba(0, 0, 0, 0.75);
@@ -333,7 +617,7 @@ onMounted(() => {
 .progress-container { margin: 26px 0; }
 .progress-bar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
 .progress-fill { height: 100%; background: linear-gradient(to right, #06b6d4, #22d3ee); border-radius: 4px; transition: width 0.3s ease; }
-.call-controls { display: flex; justify-content: center; gap: 14px; margin: 34px 0; flex-wrap: wrap; }
+.call-controls { display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 14px; margin: 6px 0 0; width: 100%; }
 .control-btn {
   background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px; padding: 14px; min-width: 90px;
@@ -358,7 +642,6 @@ onMounted(() => {
 .end-call-btn:hover { transform: scale(1.05); }
 @keyframes popIn { from { opacity: 0; transform: translateY(26px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-/* ========= main surface ========= */
 .container {
   max-width: 1400px; margin: 0 auto;
   background: var(--panel-solid);
@@ -375,7 +658,6 @@ onMounted(() => {
   background: var(--panel);
 }
 
-/* search + filters */
 .search-box { flex: 1; max-width: 520px; position: relative; }
 .search-box input {
   width: 100%; padding: 14px 20px 14px 48px;
@@ -400,13 +682,124 @@ onMounted(() => {
   display: flex; align-items: center; gap: 10px;
 }
 
-/* cards grid */
+.call-surface {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 24px;
+  padding: 24px 40px 36px;
+  background: radial-gradient(1200px 600px at 30% -10%, #1a2748, #0b1224 60%, #070c18 100%);
+  color: #e6eeff;
+  min-height: 520px;
+  border-top: 1px solid var(--ring);
+}
+@media (max-width: 980px) { .call-surface { grid-template-columns: 1fr; } }
+
+.call-center {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 28px 22px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.vid-avatar {
+  width: 160px; height: 160px; border-radius: 16px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #4a6fa5, #1a73e8);
+  color: #fff; font-size: 4rem;
+  box-shadow: 0 12px 28px rgba(0,0,0,.35);
+  margin-bottom: 16px;
+}
+.call-title {
+  margin: 0 0 8px; font-size: 1.4rem; font-weight: 600; color: #fff;
+}
+.call-timer-big {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  font-weight: 600; color: #cfe2ff; margin-bottom: 18px;
+}
+.call-cta-row {
+  display: inline-flex;
+  grid-template-columns: repeat(5, minmax(90px, 1fr)); /* was 4 */
+  gap: 14px; margin-top: 6px; width: 100%;
+}
+.round-cta {
+  display: grid; place-items: center; gap: 6px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px; padding: 16px 10px; color: #e6eeff;
+  cursor: pointer; transition: transform .15s ease, background .2s ease;
+}
+.round-cta i { font-size: 1.4rem; }
+.round-cta:hover { transform: translateY(-2px); background: rgba(255,255,255,.18); }
+.round-cta.end { background: #ff4d4f; border-color: #ff4d4f; }
+.round-cta.end:hover { filter: brightness(1.05); }
+.round-cta.consult { background: #1a73e8; border-color: #1a73e8; }
+
+.chat-wrap {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex; flex-direction: column;
+  min-height: 420px;
+}
+.bubble-list {
+  overflow: auto;
+  padding: 6px;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 540px;
+}
+.bubble {
+  max-width: 78%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  position: relative;
+  line-height: 1.35;
+  word-wrap: break-word;
+}
+.bubble[data-role="assistant"] {
+  align-self: flex-start;
+  background: #0f2246;
+  border: 1px solid rgba(86,144,255,.35);
+  color: #e8f0ff;
+}
+.bubble[data-role="user"] {
+  align-self: flex-end;
+  background: #1a4d2e;
+  border: 1px solid rgba(51, 225, 131, .35);
+  color: #dbffec;
+}
+.bubble-meta {
+  font-size: .75rem;
+  opacity: .65;
+  margin-bottom: 4px;
+}
+.bubble-text { font-size: .96rem; }
+.cap-interim { opacity: .6; font-style: italic; }
+
+.upload-row {
+  display: flex; align-items: center; gap: 10px;
+  align-self: stretch; margin: 6px 2px 2px;
+}
+.attach-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.08);
+  border: 1px dashed rgba(255,255,255,.24);
+  padding: 10px 12px; border-radius: 12px;
+  cursor: pointer; user-select: none; font-weight: 600; color: #e6eeff;
+}
+.attach-btn input { display: none; }
+.upload-status { opacity: .8; font-size: .9rem; }
+
 .doctor-grid { display: grid; gap: 24px; padding: 10px 40px 30px; grid-template-columns: 1fr; }
 @media (min-width: 768px) { .doctor-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .doctor-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1400px) { .doctor-grid { grid-template-columns: repeat(4, 1fr); } }
 
-/* card */
 .doctor-card {
   background: var(--panel-solid); border-radius: 14px; overflow: hidden;
   display: flex; flex-direction: column; height: 100%;
@@ -422,7 +815,6 @@ onMounted(() => {
   display: flex; align-items: center; gap: 12px;
 }
 :global(html.dark) .doctor-header {
-  /* slightly cooler in dark so it’s not neon */
   background: linear-gradient(120deg, #3f68b5, #195fd1);
 }
 
@@ -435,7 +827,6 @@ onMounted(() => {
 .doctor-name { font-size: 1.06rem; font-weight: 600; letter-spacing: .2px; }
 .doctor-specialty { font-size: .93rem; opacity: .95; margin-top: 2px; }
 
-/* body */
 .doctor-details { padding: 14px 16px 8px; flex: 1; }
 .detail-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: .95rem; color: var(--text); }
 .detail-icon { color: var(--brand); width: 22px; text-align: center; }
@@ -449,11 +840,9 @@ onMounted(() => {
   box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 20%, transparent);
 }
 
-/* actions */
 .doctor-actions { display: flex; gap: 10px; padding: 12px 14px 16px; }
 .doctor-actions .btn { flex: 1 1 0; min-width: 0; white-space: nowrap; text-align: center; }
 
-/* buttons */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
   border: none; border-radius: 12px; font-size: .95rem; font-weight: 600;
@@ -472,10 +861,9 @@ onMounted(() => {
 }
 .btn--book:hover { background: #dc2626; box-shadow: 0 6px 16px color-mix(in srgb, #dc2626 40%, transparent); }
 
-/* active call toast */
 .active-call {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: var(--panel-solid); color: var(--text);
+  background: var(--panel-solid); color: #ddd;
   padding: 12px 16px; border-radius: 12px; border: 1px solid var(--ring);
   display: flex; align-items: center; gap: 12px;
   box-shadow: 0 10px 24px rgba(0,0,0,.22);
@@ -486,9 +874,8 @@ onMounted(() => {
 .call-timer { font-size: .9rem; }
 .btn--end { background: #ff4d4f; color: #fff; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
 
-/* status line */
-.status { text-align: center; padding: 14px; font-size: 1rem; color: var(--text); }
-.loading { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.status { text-align: center; padding: 14px; font-size: 1rem; color: #e6eeff; }
+.loading { display: inline-flex; align-items: center; gap: 5px; color: #a9b7e7; }
 .loading-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin: 0 2px; animation: pulse 1.5s infinite; }
 .loading-dots span:nth-child(2) { animation-delay: .5s; }
 .loading-dots span:nth-child(3) { animation-delay: 1s; }
