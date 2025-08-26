@@ -26,16 +26,28 @@
         @click="$emit('navigate', 'doctors')"
       >
         <i class="fas fa-user-nurse"></i>
-        <span>All Doctors</span>
+        <span>Voice Agents</span>
         <span class="chip">{{ countDoctors }}</span>
       </button>
-      <button
+      <!-- <button
         class="nav-btn"
         :class="{ active: currentView === 'chatbots' }"
         @click="$emit('navigate', 'chatbots')"
        >
         <i class="fas fa-comments"></i>
         <span>All Chatbots</span>
+        <span class="chip">17</span>
+      </button> -->
+      <button
+        class="nav-btn coming-soon"
+        :class="{ active: currentView === 'chatbots' }"
+        aria-disabled="true"
+        title="Coming soon"
+        @click.stop.prevent
+        data-badge="Coming soon"
+      >
+        <i class="fas fa-comments"></i>
+        <span>Chatbots</span>
         <span class="chip">17</span>
       </button>
       <p class="nav-label">Shortcuts</p>
@@ -203,5 +215,26 @@ html.dark .foot-cta {
 
 .foot-cta:hover {
   filter: brightness(1.05);
+}
+.nav-btn.coming-soon {
+  position: relative;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+/* The small bubble */
+.nav-btn.coming-soon::after {
+  content: attr(data-badge);
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: #111;      /* adjust to your theme */
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  pointer-events: none;   /* bubble itself isn’t interactive */
 }
 </style>
