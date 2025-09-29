@@ -16,7 +16,7 @@
             <div class="stat-icon">
               <i class="fas fa-user-md"></i>
             </div>
-            <span>17+ Specialized Doctors</span>
+            <span>20+ Specialized Doctors</span>
           </div>
           <div class="stat-item">
             <div class="stat-icon">

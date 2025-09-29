@@ -1,0 +1,125 @@
+<template>
+  <div class="auth-container">
+    <form class="auth-form" @submit.prevent="handleRegister">
+      <h2>Create Account</h2>
+      
+      <input v-model="name" placeholder="Full Name" required />
+      <input v-model="email" type="email" placeholder="Email Address" required />
+      <input v-model="password" type="password" placeholder="Password" required />
+      <input v-model="password_confirmation" type="password" placeholder="Confirm Password" required />
+      
+      <button type="submit" class="btn-primary">Sign Up</button>
+      
+      <p class="switch">
+        Already have an account?
+        <a href="#" @click.prevent="emit('navigate', 'login')">Log In</a>
+      </p>
+    </form>
+  </div>
+</template>
+
+<script setup>
+import { ref } from "vue";
+import { register } from "../services/auth";
+
+const emit = defineEmits(["navigate"]);
+
+const name = ref("");
+const email = ref("");
+const password = ref("");
+const password_confirmation = ref("");
+
+const handleRegister = async () => {
+  try {
+    const user = await register(
+      name.value,
+      email.value,
+      password.value,
+      password_confirmation.value
+    );
+    console.log("Registered:", user);
+
+    emit("navigate", "login"); 
+  } catch (err) {
+    console.error(err.response?.data || err);
+  }
+};
+</script>
+
+<style scoped>
+
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;          /* take full viewport height */
+  width: 100vw;           /* take full viewport width */
+  background: var(--bg);  /* match app background */
+  position: fixed;        /* overlay, ignore .content grid */
+  top: 0;
+  left: 0;
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel-solid, #fff);
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-2, 0 10px 40px rgba(0,0,0,0.1));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-form h2 {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.auth-form input {
+  padding: 12px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: var(--brand, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand, #2563eb), var(--brand-2, #1a73e8));
+  color: #fff;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.switch {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted, #64748b);
+}
+
+.switch a {
+  color: var(--brand, #2563eb);
+  font-weight: 600;
+  text-decoration: none;
+}
+.switch a:hover {
+  text-decoration: underline;
+}
+</style>

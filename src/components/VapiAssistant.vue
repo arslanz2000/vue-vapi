@@ -1,88 +1,87 @@
 <template>
   <div class="container">
-    <div class="controls">
-      <div class="search-box">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" v-model="searchQuery" placeholder="Search doctors by name or specialty..." />
+<section v-if="callActive" class="call-surface">
+<div class="call-layout">
+  <!-- Existing Call Center -->
+<div class="call-center"> 
+  <div class="vid-avatar"> 
+    <i class="fas fa-user-md"></i>
+   </div> 
+   <h2 class="call-title">{{ currentDoctorName }}</h2> 
+   <div class="call-timer-big"> <i class="fas fa-clock"></i> {{ callTimer }} </div> 
+   <div class="call-cta-row"> 
+    <button class="round-cta" @click="toggleMute"> 
+      <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i> 
+    </button>
+     <button class="round-cta" @click="toggleSpeaker">
+       <i class="fas" :class="isSpeakerOn ? 'fa-volume-up' : 'fa-volume-mute'"></i>
+     </button> 
+     <button class="round-cta" @click="toggleHold">
+       <i class="fas" :class="isOnHold ? 'fa-play' : 'fa-pause'"></i> 
+    </button>
+     <button class="round-cta end" @click="stopCall">
+       <i class="fas fa-phone-slash"></i> 
+      </button> 
+    <button class="round-cta consult" @click="openConsultation"> 
+      <i class="fas fa-calendar-alt"></i>
+     </button> 
+  </div> 
+</div>
+
+  <!-- Sidebar Section -->
+  <div class="call-sidebar">
+    <div class="sidebar-item active">
+      <i class="fas fa-stethoscope"></i>
+      <span>General Checkup</span>
+    </div>
+    <div class="sidebar-item">
+      <i class="fas fa-heartbeat"></i>
+      <span>Cardiogram</span>
+    </div>
+    <div class="sidebar-item">
+      <i class="fas fa-vials"></i>
+      <span>Lab Test</span>
+    </div>
+    <div class="sidebar-item">
+      <i class="fas fa-tint"></i>
+      <span>Blood Bank</span>
+    </div>
+    <button class="view-all">View All</button>
+  </div>
+</div>
+
+
+  <div class="chat-wrap">
+    <div class="bubble-list" ref="captionsEl" aria-live="polite" aria-atomic="false">
+      <div v-for="(c, i) in captions" :key="c.ts + '-' + i" class="bubble" :data-role="c.role">
+        <div class="bubble-meta">{{ c.role === 'assistant' ? 'Doctor' : 'You' }}</div>
+        <div class="bubble-text">{{ c.text }}</div>
       </div>
-      <select class="filter-select" v-model="specialtyFilter">
-        <option value="">All Specialties</option>
-        <option v-for="specialty in uniqueSpecialties" :key="specialty" :value="specialty">
-          {{ specialty }}
-        </option>
-      </select>
-      <div class="filter-select" style="display:flex;align-items:center;gap:8px">
-        <i class="fas fa-sliders-h"></i>
-        Sort by:
-        <select v-model="sortBy" style="border:none;background:transparent;font:inherit;outline:none">
-          <option value="name">Name</option>
-          <option value="specialty">Specialty</option>
-        </select>
-      </div>
-      <div v-if="callActive" class="filter-select" style="display:flex;align-items:center;gap:10px">
-        <i class="fas fa-file-upload"></i>
-        <label class="btn" style="cursor:pointer;padding:10px 12px">
-          <input type="file" accept="application/pdf" @change="handlePdfToCall" style="display:none" />
-          Send PDF to Doctor
+
+      <div class="upload-row">
+        <label class="attach-btn">
+          <i class="fas fa-file-upload"></i>
+          <span>Send PDF or Image(s)</span>
+          <input type="file" accept="application/pdf,image/*" multiple @change="handleDocsToCall" />
         </label>
-        <small v-if="uploadingDoc">{{ uploadStatus }}</small>
+        <small v-if="uploadingDoc" class="upload-status">{{ uploadStatus }}</small>
       </div>
     </div>
 
-    <section v-if="callActive" class="call-surface">
-      <div class="call-center">
-        <div class="vid-avatar">
-          <i class="fas fa-user-md"></i>
-        </div>
-        <h2 class="call-title">{{ currentDoctorName }}</h2>
-        <div class="call-timer-big">
-          <i class="fas fa-clock"></i>
-          {{ callTimer }}
-        </div>
-        <div class="call-cta-row">
-          <button class="round-cta" @click="toggleMute" :aria-pressed="isMuted">
-            <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
-            <span>{{ isMuted ? 'Unmute' : 'Mute' }}</span>
-          </button>
-          <button class="round-cta" @click="toggleSpeaker" :aria-pressed="isSpeakerOn">
-            <i class="fas" :class="isSpeakerOn ? 'fa-volume-up' : 'fa-volume-mute'"></i>
-            <span>{{ isSpeakerOn ? 'Speaker On' : 'Speaker Off' }}</span>
-          </button>
-          <button class="round-cta" @click="toggleHold" :aria-pressed="isOnHold">
-            <i class="fas" :class="isOnHold ? 'fa-play' : 'fa-pause'"></i>
-            <span>{{ isOnHold ? 'Resume' : 'Hold' }}</span>
-          </button>
-          <button class="round-cta end" @click="stopCall" aria-label="End Call">
-            <i class="fas fa-phone-slash"></i>
-            <span>End</span>
-          </button>
-          <button class="round-cta consult" @click="openConsultation" aria-label="Book Consultation">
-            <i class="fas fa-calendar-alt"></i>
-            <span>Consultation</span>
-          </button>
-        </div>
-      </div>
+    <form class="chat-composer" @submit.prevent="sendChat">
+      <input
+        type="text"
+        v-model="chatText"
+        placeholder="Type a message to the doctor…"
+        :disabled="!callActive || sending"
+      />
+      <button class="btn send-btn" :disabled="!chatText.trim() || sending">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+</section>
 
-      <div class="chat-wrap">
-        <div class="bubble-list" ref="captionsEl" aria-live="polite" aria-atomic="false">
-          <div v-for="(c, i) in captions" :key="c.ts + '-' + i" class="bubble" :data-role="c.role">
-            <div class="bubble-meta">{{ c.role === 'assistant' ? 'Doctor' : 'You' }}</div>
-            <div class="bubble-text">
-              {{ c.text }}
-              <span v-if="!c.final" class="cap-interim">…</span>
-            </div>
-          </div>
-          <div class="upload-row">
-            <label class="attach-btn">
-              <i class="fas fa-file-upload"></i>
-              <span>Send PDF to Doctor</span>
-              <input type="file" accept="application/pdf" @change="handlePdfToCall" />
-            </label>
-            <small v-if="uploadingDoc" class="upload-status">{{ uploadStatus }}</small>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <template v-else>
       <h2 class="section-title">
@@ -90,58 +89,41 @@
         Available AI Physicians
       </h2>
       <section class="doctor-grid">
-        <div v-for="(doctor, index) in filteredDoctors" :key="doctor.id" class="doctor-card fade-in" :style="{ 'animation-delay': `${index * 0.05}s` }">
-          <div class="doctor-header">
+        <div
+          v-for="(doctor, index) in filteredDoctors"
+          :key="doctor.id"
+          class="doctor-card fade-in"
+          :style="{ 'animation-delay': `${index * 0.05}s` }"
+        >
+          <header class="doctor-header">
             <div class="doctor-avatar">
-              <i class="fas fa-user-md"></i>
+               <img src="@/assets/image_doc.png" alt="Doctor" />
             </div>
-            <div class="doctor-info">
-              <p class="doctor-name">{{ doctor.name }}</p>
-              <p class="doctor-specialty">{{ doctor.specialty }}</p>
-            </div>
-          </div>
+          </header>
+
           <div class="doctor-details">
             <div class="detail-item">
-              <div class="detail-icon">
-                <i class="fas fa-graduation-cap"></i>
-              </div>
-              <div>Board Certified in {{ doctor.specialty }}</div>
+              <span>{{ doctor.specialty }}</span>
             </div>
             <div class="availability">
-              <div class="availability-dot"></div>
-              <div>Available now for consultation</div>
+              <span class="availability-dot" />
+              <span>Available now for consultation</span>
             </div>
           </div>
-          <div class="doctor-actions">
-            <button class="btn btn--call" @click="startCall(doctor)" :disabled="callActive && activeDoctorId === doctor.id">
+
+          <footer class="doctor-actions">
+            <button
+              class="btn btn--call"
+              @click="startCall(doctor)"
+              :disabled="callActive && activeDoctorId === doctor.id"
+            >
               <i class="fas fa-phone-alt"></i>
-              {{ (callActive && activeDoctorId === doctor.id) ? 'In Call...' : 'Call' }}
+              {{ (callActive && activeDoctorId === doctor.id) ? 'In Call...' : 'Start AI Consultation' }}
             </button>
-            <a class="btn btn--book" :href="`https://calendly.com/arslan-khan-icustoms/30min`" target="_blank">
-              <i class="fas fa-calendar-alt"></i>
-              Consultation
-            </a>
-          </div>
+          </footer>
         </div>
       </section>
     </template>
-
-    <aside v-if="callActive" class="active-call" role="status" aria-live="polite">
-      <p class="active-call__text">
-        <i class="fas fa-phone-alt"></i>
-        In call with <strong>{{ currentDoctorName }}</strong>
-      </p>
-      <div class="call-info">
-        <div class="call-timer">
-          <i class="fas fa-clock"></i>
-          {{ callTimer }}
-        </div>
-        <button class="btn btn--end" @click="stopCall">
-          <i class="fas fa-phone-slash"></i>
-          End Call
-        </button>
-      </div>
-    </aside>
 
     <p v-if="status && !callActive" class="status">
       <span v-if="statusLoading" class="loading">
@@ -153,7 +135,6 @@
       <span v-else>{{ status }}</span>
     </p>
 
-    <!-- End-of-call popup -->
     <div v-if="showTranscriptPrompt" class="call-popup-overlay" role="dialog" aria-modal="true">
       <div class="call-popup">
         <div class="call-header">
@@ -165,7 +146,7 @@
         </div>
         <div class="call-actions" style="gap:12px">
           <button class="end-call-btn"
-                  @click="downloadSummary"
+                  @click="downloadPdfReport"
                   :disabled="summarizing"
                   aria-label="Summarize & Download">
             <i class="fas" :class="summarizing ? 'fa-spinner fa-spin' : 'fa-file-alt'"></i>
@@ -180,9 +161,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import Vapi from '@vapi-ai/web'
 import * as pdfjsLib from 'pdfjs-dist'
+import Tesseract from 'tesseract.js'
+import { jsPDF } from 'jspdf'
+import axios from "axios"
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
@@ -191,6 +175,29 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 const PUBLIC_KEY = 'c9773d29-c83b-4903-959a-d40a77793396'
 let vapi
+
+// Voice-only state
+const assistantMuted = ref(false)
+const canSendControls = ref(false)
+const controlQueue = []
+
+function flushControls() {
+  if (!vapi) return
+  while (controlQueue.length) {
+    const control = controlQueue.shift()
+    try {
+      vapi.send({ type: 'control', control })
+    } catch (e) {
+      const msg = String(e?.message || e).toLowerCase()
+      if (msg.includes('only supported after join')) {
+        controlQueue.unshift(control)
+        break
+      } else {
+        console.error('control send failed:', e)
+      }
+    }
+  }
+}
 
 const doctors = ref([
   { id: 'dr-david', name: 'Dr. David Chen', specialty: 'Cardiology', assistantId: 'ba2f0969-4750-4190-a91f-2c5dc814bced' },
@@ -210,7 +217,13 @@ const doctors = ref([
   { id: 'dr-ellie', name: 'Dr. Ellie Clark', specialty: 'ENT Specialist', assistantId: '16cd535c-8137-40c8-aa94-40e19c103648' },
   { id: 'dr-michael', name: 'Dr. Michael Wright', specialty: 'Neurology', assistantId: '1c964479-ebe7-4fe7-b446-acb23173664e' },
   { id: 'dr-sophie', name: 'Dr. Sophie Martinez', specialty: 'General Practice', assistantId: '13e6ca08-cec8-4bff-816e-e5fbad4a633c' },
+  { id: 'dr-mark', name: 'Dr Mark', specialty: 'Pediatrician', assistantId: 'f5d3b472-62b7-42da-93e9-945af243dbf8' },
+  { id: 'dr-lucy', name: 'Dr Lucy', specialty: 'Nutritionist', assistantId: '62107efe-3686-4974-80ac-6b61f17fc589' },
+  { id: 'dr-anne', name: 'Dr Anne', specialty: 'Psychologist', assistantId: 'e4cb63da-8ae6-4f08-8f78-25ad8cc981df' },
 ])
+
+const OPENAI_MODEL = 'gpt-4o-mini'
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
 
 const callActive = ref(false)
 const activeDoctorId = ref(null)
@@ -221,25 +234,25 @@ const searchQuery = ref('')
 const specialtyFilter = ref('')
 const sortBy = ref('name')
 const callProgress = ref(0)
+const chatText = ref('')
+const sending = ref(false)
 
 const callState = ref('idle')
 const isMuted = ref(false)
 const isSpeakerOn = ref(false)
 const isOnHold = ref(false)
 
-const captions = ref([]) 
+const captions = ref([])
 const captionsEl = ref(null)
 
 const uploadingDoc = ref(false)
 const uploadStatus = ref('')
 
-// transcript & metadata
-const finalTranscript = ref([])          // [{ role:'user'|'assistant', text:'...' }]
-const showTranscriptPrompt = ref(false)  // popup
-const callStartedAt = ref(null)          // header metadata
-const lastCallTimer = ref('00:00')       // snapshot at end
+const finalTranscript = ref([])
+const showTranscriptPrompt = ref(false)
+const callStartedAt = ref(null)
+const lastCallTimer = ref('00:00')
 
-// summary UI state
 const summarizing = ref(false)
 const CONSULTATION_URL = 'https://calendly.com/arslan-khan-icustoms/30min'
 const suppressSummaryPopup = ref(false)
@@ -268,6 +281,81 @@ const filteredDoctors = computed(() => {
 })
 
 const activeBubbleIdx = ref({ user: null, assistant: null })
+const pendingMessages = []
+
+function flushMessages() {
+  if (!vapi) return
+  while (pendingMessages.length) {
+    const t = pendingMessages.shift()
+    try {
+      vapi.send({ type: 'add-message', message: { role: 'user', content: t } })
+    } catch (e) {
+      pendingMessages.unshift(t)
+      break
+    }
+  }
+}
+
+async function saveSummary(doctorId, summaryText) {
+  const token = localStorage.getItem("token");
+  try {
+    await axios.post(
+      "http://127.0.0.1:3000/api/summaries",
+      {
+        doctor_id: doctorId,
+        summary: summaryText,
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    console.log("✅ Summary saved");
+  } catch (err) {
+    console.error("❌ Failed to save summary:", err.response?.data || err);
+  }
+}
+
+async function sendChat() {
+  const text = chatText.value.trim()
+  if (!text || !callActive.value) return
+
+  addCaption('user', text, true)
+  finalTranscript.value.push({ role: 'user', text })
+  chatText.value = ''
+
+  try {
+    sending.value = true
+    if (canSendControls.value) {
+      await vapi?.send?.({ type: 'add-message', message: { role: 'user', content: text } })
+    } else {
+      pendingMessages.push(text)
+      status.value = 'Message queued — connecting…'
+      setTimeout(() => (status.value = ''), 3500)
+    }
+  } catch (e) {
+    console.error('sendChat error:', e)
+    status.value = 'Could not send message.'
+    setTimeout(() => (status.value = ''), 4000)
+  } finally {
+    sending.value = false
+  }
+}
+
+function normalizeContent(content) {
+  if (!content) return ''
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content.map(p => {
+      if (!p) return ''
+      if (typeof p === 'string') return p
+      return p.text || p.content || p.delta || p.transcript || ''
+    }).join(' ').trim()
+  }
+  if (typeof content === 'object') {
+    return content.text || content.content || content.delta || content.transcript || ''
+  }
+  return ''
+}
 
 function addCaption(role, text, final = false) {
   if (!text || !text.trim()) return
@@ -291,7 +379,32 @@ function addCaption(role, text, final = false) {
   })
 }
 
+function setAssistantMuted(flag) {
+  const ctrl = flag ? 'mute-assistant' : 'unmute-assistant'
+  assistantMuted.value = !!flag
+  isSpeakerOn.value = !flag
+
+  if (!canSendControls.value) {
+    controlQueue.push(ctrl)
+    return
+  }
+  try {
+    vapi?.send?.({ type: 'control', control: ctrl })
+  } catch (e) {
+    const msg = String(e?.message || e).toLowerCase()
+    if (msg.includes('only supported after join')) {
+      controlQueue.push(ctrl)
+    } else {
+      console.error('Failed to control assistant voice:', e)
+    }
+  }
+}
+
 const startCall = async (doctor) => {
+  if (!doctor || !doctor.assistantId) {
+    status.value = 'No doctor selected or missing assistantId.'
+    return
+  }
   finalTranscript.value = []
   showTranscriptPrompt.value = false
   callStartedAt.value = new Date()
@@ -303,6 +416,10 @@ const startCall = async (doctor) => {
   statusLoading.value = true
   captions.value = []
 
+  canSendControls.value = false
+  controlQueue.length = 0
+  setAssistantMuted(false)
+
   const interval = setInterval(() => {
     if (callProgress.value < 100) callProgress.value += 10
     else clearInterval(interval)
@@ -312,6 +429,7 @@ const startCall = async (doctor) => {
     await vapi.start(doctor.assistantId, {
       clientMessages: ['transcript', 'conversation-update', 'status-update', 'speech-update']
     })
+
     callState.value = 'active'
     callActive.value = true
     statusLoading.value = false
@@ -328,112 +446,281 @@ const handleCallEnd = () => {
   callState.value = 'idle'
   callActive.value = false
   clearInterval(timerInterval)
+  isMuted.value = false
+  assistantMuted.value = false
+  isSpeakerOn.value = false
+  canSendControls.value = false
+  controlQueue.length = 0
   lastCallTimer.value = callTimer.value
-  status.value = `Call ended with ${currentDoctorName.value}`
-  showTranscriptPrompt.value = !suppressSummaryPopup.value   // changed
-  suppressSummaryPopup.value = false                         // reset
+  status.value = `Session ended with ${currentDoctorName.value}`
+  showTranscriptPrompt.value = !suppressSummaryPopup.value
+  suppressSummaryPopup.value = false
   setTimeout(() => (status.value = ''), 5000)
 }
+
 function openConsultation() {
-  // prevent the summary popup for this path
   suppressSummaryPopup.value = true
   try { vapi?.stop() } catch (_) {}
-  // open in a new tab safely
   window.open(CONSULTATION_URL, '_blank', 'noopener')
 }
+
 const stopCall = () => {
   try { vapi?.stop() } catch (_) {}
-  handleCallEnd()
-}
+  handleCallEnd();
 
-// ----- SUMMARY (client-only heuristic) -----
-async function downloadSummary() {
+  // collect transcript into single text
+  const transcript = finalTranscript.value.map(m => `${m.role}: ${m.text}`).join("\n");
+
+  // save summary in DB
+  if (activeDoctorId.value && transcript) {
+    saveSummary(activeDoctorId.value, transcript);
+  }
+};
+
+async function downloadPdfReport() {
   summarizing.value = true
   try {
+    const lines = getSanitizedLines()
+    const convoText = toConversationText(lines)
+
     const doctor = currentDoctorName.value || 'Doctor'
     const started = callStartedAt.value ? callStartedAt.value.toLocaleString() : ''
     const duration = lastCallTimer.value || callTimer.value
 
-    const lines = buildTranscriptLines()
-    const summary = generateHeuristicSummary(lines)
+    let sections
+    if (OPENAI_API_KEY) {
+      try {
+        sections = await generateReportWithGPT({ doctor, started, duration, convoText })
+      } catch (e) {
+        console.error('GPT report failed, using fallback:', e)
+        sections = buildHeuristicSections(lines)
+      }
+    } else {
+      sections = buildHeuristicSections(lines)
+    }
 
-    const header = `Consultation Summary — ${doctor}\nStarted: ${started}\nDuration: ${duration}\n\n`
-    const content = header + (summary || 'Summary unavailable.') + '\n'
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const pageW = doc.internal.pageSize.getWidth()
+    const pageH = doc.internal.pageSize.getHeight()
+    const margin = 16
+    const maxW = pageW - margin * 2
+    let y = margin
 
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const BRAND = { r: 26, g: 115, b: 232 }       
+    const MUTED = 120
+
+    doc.setFillColor(BRAND.r, BRAND.g, BRAND.b)
+    doc.rect(0, 0, pageW, 26, 'F')
+    doc.setTextColor(255)
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(18)
+    doc.text('Consultation Report', margin, 16)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+    doc.text('Auto-generated from your virtual consultation', margin, 22)
+
+    y = 34
+    doc.setTextColor(0)
+    infoRow('Physician', doctor)
+    infoRow('Started', started || '—')
+    infoRow('Duration', duration || '—')
+    y += 6
+    divider()
+
+    y = section('Key Points Discussed', sections.key_points, y)
+    y = section('Observations',          sections.observations, y)
+    y = section('Suggestions',           sections.suggestions, y)
+    y = section('Next Steps / Follow-up',sections.next_steps, y)
+
+    const notes = sections.important_notes?.length
+      ? sections.important_notes
+      : [
+          'This report is auto-generated from a virtual conversation.',
+          'It is not a diagnosis or a substitute for in-person medical care.',
+          'Seek urgent care if symptoms worsen or new severe symptoms develop.'
+        ]
+    y = section('Important Notes', notes, y)
+    addPageNumbers()
+
     const safeDoc = doctor.replace(/[^\w\-]+/g, '_')
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-')
-    const filename = `${safeDoc}__${stamp}__summary.md`
-
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    URL.revokeObjectURL(a.href)
-    a.remove()
-
+    doc.save(`${safeDoc}__${stamp}__consultation.pdf`)
     showTranscriptPrompt.value = false
+
+    function infoRow(label, value) {
+      const chipH = 10
+      const chipW = (pageW - margin * 2) / 3 - 4
+      const idx = ['Physician','Started','Duration'].indexOf(label)
+      const x = margin + idx * (chipW + 6)
+      doc.setDrawColor(220); doc.setFillColor(248, 249, 255)
+      doc.setFontSize(8); doc.setTextColor(MUTED)
+      doc.text(label.toUpperCase(), x + 3, y + 4)
+      doc.setFontSize(11); doc.setTextColor(0)
+      const vLines = doc.splitTextToSize(value || '—', chipW - 6)
+      doc.text(vLines, x + 3, y + 8)
+      if (label === 'Duration') y += chipH + 4
+    }
+
+    function divider() {
+      doc.setDrawColor(210); doc.setLineWidth(0.4)
+      doc.line(margin, y, pageW - margin, y); y += 4
+    }
+
+    function ensureSpace(linesNeeded = 1) {
+      const need = linesNeeded * 6 + 14 
+      if (y + need > pageH - margin) {
+        doc.addPage(); y = margin + 2
+      }
+    }
+
+    function section(title, bulletsArr, yy) {
+      y = yy
+      ensureSpace(3)
+      doc.setFillColor(240, 244, 255); doc.setDrawColor(220) 
+      doc.roundedRect(margin, y, maxW, 10, 2, 2, 'FD') 
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
+      doc.setTextColor(BRAND.r, BRAND.g, BRAND.b)
+      doc.text(title, margin + 4, y + 7)
+      y += 14
+      bullets(bulletsArr)
+      y += 2
+      return y
+    }
+
+    function bullets(list) {
+      if (!list || !list.length) {
+        doc.setTextColor(MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(11)
+        doc.text('— none —', margin, y); doc.setTextColor(0); y += 6
+        return
+      }
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0)
+      for (const t of list) {
+        const lines = doc.splitTextToSize(String(t), maxW - 8)
+        ensureSpace(lines.length)
+        doc.setFont('helvetica', 'bold'); doc.text('•', margin + 1, y)
+        doc.setFont('helvetica', 'normal'); doc.text(lines, margin + 6, y)
+        y += 6 * Math.max(1, lines.length)
+      }
+    }
+
+    function addPageNumbers() {
+      const pageCount = doc.getNumberOfPages()
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(MUTED)
+        doc.text(`Page ${i} of ${pageCount}`, pageW - margin, pageH - 6, { align: 'right' })
+      }
+      doc.setTextColor(0)
+    }
+
   } finally {
     summarizing.value = false
   }
 }
 
-function buildTranscriptLines() {
-  const lines = finalTranscript.value.length
+function buildHeuristicSections(lines) {
+  const isShort = (s) => (s || '').split(/\s+/).length <= 2
+  const dedupe = (arr) => Array.from(new Set(arr.map(t => String(t).trim()))).filter(Boolean)
+  const userU = lines.filter(l => l.role !== 'assistant').map(l => l.text).filter(t => !isShort(t))
+  const docU  = lines.filter(l => l.role === 'assistant').map(l => l.text).filter(t => !isShort(t))
+  const obsKw = /(seem|observ|finding|exam|likely|stable|normal|abnormal|range|vitals|labs?|scan|imaging|x-?ray|mri|ct)/i
+  const recKw = /(should|recommend|advise|consider|monitor|avoid|increase|decrease|start|stop|take|use|apply|dose|dosage)/i
+  const nextKw = /(next|follow[- ]?up|schedule|book|test|lab|scan|referr|see|appointment|blood|results|recheck|review)/i
+  return {
+    key_points: dedupe([ ...userU.slice(0, 4), ...docU.slice(0, 2) ]).slice(0, 8),
+    observations: dedupe(docU.filter(t => obsKw.test(t))).slice(0, 10),
+    suggestions: dedupe(docU.filter(t => recKw.test(t))).slice(0, 12),
+    next_steps:  dedupe(docU.filter(t => nextKw.test(t))).slice(0, 10),
+    important_notes: [
+      'This report is auto-generated from a virtual conversation.',
+      'It is not a diagnosis or a substitute for in-person medical care.',
+      'Seek urgent care if symptoms worsen or new severe symptoms develop.'
+    ]
+  }
+}
+
+function getSanitizedLines() {
+  const rawLines = finalTranscript.value.length
     ? finalTranscript.value
     : captions.value.map(c => ({ role: c.role === 'assistant' ? 'assistant' : 'user', text: (c.text || '').trim() }))
-  return lines.filter(l => l.text)
+
+  return rawLines
+    .filter(l => l && l.text)
+    .filter(l => !/^[📄🖼️]\s/i.test(l.text))
+    .map(l => ({ ...l, text: l.text.replace(/\s+/g, ' ').trim() }))
 }
 
-function generateHeuristicSummary(lines) {
-  const user = []
-  const doctor = []
-  for (const l of lines) (l.role === 'assistant' ? doctor : user).push(l.text)
-
-  const pick = (arr, limit = 5) => arr.filter(Boolean).slice(0, limit)
-
-  const concernKw = /(pain|ache|fever|cough|rash|dizzy|nausea|vomit|fatigue|headache|shortness of breath|symptom|issue|problem|concern|since|for\s+\d)/i
-  const chief = pick([...user.slice(0, 6), ...user.filter(t => concernKw.test(t))], 6)
-
-  const histKw = /(since|for|after|because|history|previous|past|months?|weeks?|days?|years?)/i
-  const history = pick(user.filter(t => histKw.test(t)), 6)
-
-  const adviceKw = /(should|recommend|advise|suggest|try|consider|monitor|avoid|increase|decrease|start|stop|take|use|apply)/i
-  const advice = pick(doctor.filter(t => adviceKw.test(t)), 8)
-
-  const nextKw = /(next|follow[- ]?up|book|schedule|test|lab|scan|x-ray|mri|refer|see|appointment|blood|results)/i
-  const next = pick(doctor.filter(t => nextKw.test(t)), 8)
-
-  const questions = pick(user.filter(t => t.includes('?')).slice(-6), 6)
-
-  const sec = (title, arr) =>
-`## ${title}
-${arr.length ? arr.map(t => `- ${t}`).join('\n') : '- (none noted)'}`
-
-  return [
-    '# Visit Summary',
-    (chief.length ? chief : doctor.slice(0, 4)).slice(0, 6).map(t => `- ${t}`).join('\n') || '- (no highlights captured)',
-    sec('Chief Concerns / Symptoms', chief),
-    sec('History & Context', history),
-    sec('Advice Given (non-diagnostic)', advice),
-    sec('Next Steps / Follow-up', next),
-    sec('Questions for Next Visit', questions)
-  ].join('\n\n')
+function toConversationText(lines, maxChars = 18000) {
+  let s = lines.map(l => `${l.role === 'assistant' ? 'Doctor' : 'Patient'}: ${l.text}`).join('\n')
+  if (s.length > maxChars) s = '…\n' + s.slice(-maxChars) 
+  return s
 }
 
-// --------------------------------
+async function generateReportWithGPT({ doctor, started, duration, convoText }) {
+  const sys = `
+You are a medical scribe. Produce a concise, de-duplicated report from a virtual consultation transcript.
+Do NOT invent facts. Use only the transcript content (attachments were removed).
+Return STRICT JSON with this shape:
+{
+  "key_points": string[],
+  "observations": string[],
+  "suggestions": string[],
+  "next_steps": string[],
+  "important_notes": string[]
+}
+Each item should be a short bullet (<= 20 words).
+Include a generic safety disclaimer inside "important_notes" if not present.
+`.trim()
 
-const cancelCall = () => {
-  try { vapi?.stop() } catch (_) {}
-  callState.value = 'idle'
-  callActive.value = false
-  status.value = 'Call canceled'
-  setTimeout(() => (status.value = ''), 3000)
+  const user = `
+Physician: ${doctor || 'Doctor'}
+Started: ${started || '-'}
+Duration: ${duration || '-'}
+
+Transcript:
+${convoText}
+`.trim()
+
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: user }
+      ],
+      temperature: 0.2
+    })
+  })
+
+  if (!resp.ok) {
+    const t = await resp.text().catch(() => '')
+    throw new Error(`OpenAI error ${resp.status}: ${t || resp.statusText}`)
+  }
+
+  const data = await resp.json()
+  const content = data?.choices?.[0]?.message?.content || '{}'
+  let json
+  try { json = JSON.parse(content) } catch { json = {} }
+
+  const ensure = (a) => Array.isArray(a) ? a.filter(Boolean) : []
+  return {
+    key_points: ensure(json.key_points),
+    observations: ensure(json.observations),
+    suggestions: ensure(json.suggestions),
+    next_steps: ensure(json.next_steps),
+    important_notes: ensure(json.important_notes),
+  }
 }
 
 const toggleMute = () => { isMuted.value = !isMuted.value; isMuted.value ? vapi.mute() : vapi.unmute() }
-const toggleSpeaker = () => { isSpeakerOn.value = !isSpeakerOn.value }
+const toggleSpeaker = () => {
+  const next = !isSpeakerOn.value
+  setAssistantMuted(!next)
+}
 const toggleHold = () => { isOnHold.value = !isOnHold.value }
 
 const handleVapiError = (err) => {
@@ -455,11 +742,102 @@ const startCallTimer = () => {
   }, 1000)
 }
 
+async function handleDocsToCall(e) {
+  const files = Array.from(e.target?.files || [])
+  if (!files.length) return
+
+  uploadingDoc.value = true
+  uploadStatus.value = `Processing ${files.length} file(s)…`
+
+  for (const file of files) {
+    try {
+      if (file.type === 'application/pdf') {
+        uploadStatus.value = `Reading PDF: ${file.name}`
+        const ab = await file.arrayBuffer()
+        const pdf = await pdfjsLib.getDocument({ data: ab }).promise
+
+        let text = ''
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p)
+          const content = await page.getTextContent()
+          text += content.items.map(i => i.str).join(' ') + '\n'
+        }
+        await sendFileTextToDoctor(text.trim(), `📄 ${file.name}`)
+      } else if (file.type.startsWith('image/')) {
+        uploadStatus.value = `OCR image: ${file.name}`
+        const dataUrl = await fileToDataURL(file)
+        const { data } = await Tesseract.recognize(dataUrl, 'eng')
+        const text = (data?.text || '').trim()
+        await sendFileTextToDoctor(text || '(no text detected)', `🖼️ ${file.name}`)
+      } else {
+        uploadStatus.value = `Skipping unsupported type: ${file.name}`
+      }
+    } catch (err) {
+      console.error('File handling failed:', err)
+      uploadStatus.value = `Failed: ${file.name}`
+    }
+  }
+
+  uploadingDoc.value = false
+  uploadStatus.value = 'Done'
+  setTimeout(() => (uploadStatus.value = ''), 2500)
+
+  e.target.value = ''
+}
+
+async function sendFileTextToDoctor(text, label) {
+  if (!text) return
+
+  addCaption('user', `${label}\n\n${text.slice(0, 5000)}${text.length > 5000 ? '…' : ''}`, true)
+  finalTranscript.value.push({ role: 'user', text: `${label}\n\n${text}` })
+
+  for (const chunk of chunkString(`${label}\n\n${text}`, 1500)) {
+    if (canSendControls.value) {
+      await vapi?.send?.({ type: 'add-message', message: { role: 'user', content: chunk } })
+    } else {
+      pendingMessages.push(chunk)
+    }
+  }
+}
+
+function chunkString(str, size = 1500) {
+  const out = []
+  for (let i = 0; i < str.length; i += size) out.push(str.slice(i, i + size))
+  return out
+}
+
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 onMounted(() => {
   vapi = new Vapi(PUBLIC_KEY)
-  vapi.on('call-start', () => { callState.value = 'active'; callActive.value = true; startCallTimer() })
-  vapi.on('call-end', () => { handleCallEnd() })
-  vapi.on('error', e => { handleVapiError(e?.error?.message || String(e?.error || e)) })
+
+  vapi.on('status-update', (m) => {
+    const blob = JSON.stringify(m).toLowerCase()
+    if (!canSendControls.value &&
+        (blob.includes('join') || blob.includes('joined') || blob.includes('connected') || blob.includes('ready'))) {
+      canSendControls.value = true
+      flushControls()
+      flushMessages()
+    }
+  })
+
+  vapi.on('call-start', () => {
+    callState.value = 'active'
+    callActive.value = true
+    startCallTimer()
+    if (!canSendControls.value) {
+      canSendControls.value = true
+      flushControls()
+      flushMessages()
+    }
+  })
 
   vapi.on('message', (m) => {
     if (!m || !m.type) return
@@ -468,23 +846,17 @@ onMounted(() => {
       const role = m.role === 'assistant' ? 'assistant' : 'user'
       const text = (m.transcript || '').trim()
       const final = m?.transcriptType ? (m.transcriptType === 'final') : !!m?.isFinal
-
       addCaption(role, text, final)
-
-      if (final && text) {
-        finalTranscript.value.push({ role, text })
-      }
+      if (final && text) finalTranscript.value.push({ role, text })
     }
 
     if (m.type === 'conversation-update' && Array.isArray(m.conversation?.messages)) {
       const last = m.conversation.messages[m.conversation.messages.length - 1]
-      if (last && last.role && typeof last.content === 'string') {
+      if (last && last.role) {
         const role = last.role === 'assistant' ? 'assistant' : 'user'
-        const text = (last.content || '').trim()
+        const text = normalizeContent(last.content)
         if (!text) return
-
         addCaption(role, text, true)
-
         const prev = finalTranscript.value[finalTranscript.value.length - 1]
         if (!prev || prev.text !== text || prev.role !== role) {
           finalTranscript.value.push({ role, text })
@@ -493,394 +865,450 @@ onMounted(() => {
     }
   })
 
-  status.value = 'Platform initialized. Select a doctor to start a call.'
+  vapi.on('call-end', () => { handleCallEnd() })
+  vapi.on('error', e => { handleVapiError(e?.error?.message || String(e?.error || e)) })
+
+  status.value = 'Platform initialized. Select a doctor to start a session.'
   setTimeout(() => (status.value = ''), 5000)
 })
 
-// -------- PDF helpers --------
-async function extractPdfText(file) {
-  const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  let out = []
-  let charCount = 0
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const txt = await page.getTextContent()
-    const pageText = txt.items.map(t => t.str).join(" ")
-      .replace(/\s+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-    out.push(`\n\n--- Page ${i} of ${pdf.numPages} ---\n${pageText}`)
-    charCount += pageText.length
-  }
-
-  let text = out.join("")
-  if (charCount < 200) {
-    text += "\n\n[Note: Very little text was extracted — this PDF might be scanned/images. Consider OCR first.]"
-  }
-  return text.trim()
-}
-function splitIntoChunks(str, chunkSize = 6000) {
-  const chunks = []
-  let i = 0
-  while (i < str.length) {
-    let end = Math.min(i + chunkSize, str.length)
-    const windowStart = Math.max(i, end - 400)
-    const nl = str.lastIndexOf('\n', end)
-    const safeBreak = nl >= windowStart ? nl : end
-    chunks.push(str.slice(i, safeBreak))
-    i = safeBreak
-  }
-  return chunks.filter(Boolean)
-}
-async function sendTextIntoCall(text, filename) {
-  if (!callActive.value) throw new Error("No active call")
-
-  const CHUNK_SIZE = 6000
-  const PAUSE_MS = 350
-
-  const header = `User uploaded "${filename}". Use the following content to assist.`
-  vapi.send({
-    type: "add-message",
-    message: { role: "user", content: header },
-  })
-  addCaption("user", header, true)
-
-  const chunks = splitIntoChunks(text, CHUNK_SIZE)
-  for (let i = 0; i < chunks.length; i++) {
-    uploadStatus.value = `Sending PDF text… (${i + 1}/${chunks.length})`
-    vapi.send({
-      type: "add-message",
-      message: { role: "user", content: chunks[i] },
-    })
-    addCaption("user", `[PDF chunk ${i + 1}/${chunks.length}]`, true)
-    await new Promise(r => setTimeout(r, PAUSE_MS))
-  }
-
-  uploadStatus.value = "Done"
-  setTimeout(() => (uploadStatus.value = ""), 1500)
-}
-async function handlePdfToCall(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  if (!callActive.value) {
-    status.value = "Start a call first, then upload."
-    return
-  }
-
-  try {
-    uploadingDoc.value = true
-    uploadStatus.value = "Extracting text…"
-    const text = await extractPdfText(file)
-
-    const promptHeader =
-      `Please incorporate the uploaded document while helping me.\n` +
-      `If relevant, summarize key points first, then answer follow-ups.\n`
-
-    await sendTextIntoCall(`${promptHeader}\n${text}`, file.name)
-  } catch (err) {
-    console.error(err)
-    status.value = `Upload error: ${err?.message || err}`
-  } finally {
-    uploadingDoc.value = false
-    e.target.value = ''
-  }
-}
+onBeforeUnmount(() => {
+  try { vapi?.stop?.() } catch (_) {}
+  clearInterval(timerInterval)
+})
 </script>
 
 <style scoped>
-.call-popup-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000; backdrop-filter: blur(10px);
-}
-.call-popup {
-  width: 90%; max-width: 420px;
-  background: linear-gradient(135deg, #1e2a4a 0%, #0f1729 100%);
-  border-radius: 24px; padding: 28px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
-  text-align: center; color: #e6eeff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.call-header { margin-bottom: 26px; }
-.call-avatar {
-  width: 112px; height: 112px; margin: 0 auto 18px; border-radius: 50%;
-  background: linear-gradient(135deg, #4a6fa5, #1a73e8);
-  display: grid; place-items: center; font-size: 3.2rem;
-  border: 3px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
-}
-.call-info h3 { font-size: 1.6rem; margin: 0 0 6px; font-weight: 600; color: #fff; }
-.call-info p { font-size: 1.05rem; color: #a9b7e7; }
-.progress-container { margin: 26px 0; }
-.progress-bar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
-.progress-fill { height: 100%; background: linear-gradient(to right, #06b6d4, #22d3ee); border-radius: 4px; transition: width 0.3s ease; }
-.call-controls { display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 14px; margin: 6px 0 0; width: 100%; }
-.control-btn {
-  background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px; padding: 14px; min-width: 90px;
-  display: flex; flex-direction: column; align-items: center;
-  color: #e6eeff; font-size: 0.9rem; cursor: pointer; transition: all .25s ease;
-}
-.control-btn i { font-size: 1.6rem; margin-bottom: 8px; height: 40px; width: 40px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.25); }
-.control-btn:hover { background: rgba(255, 255, 255, 0.18); transform: translateY(-2px); }
-.call-actions { display: flex; justify-content: center; gap: 12px; }
-.cancel-btn {
-  background: rgba(255, 77, 79, 0.18); border: 1px solid rgba(255, 77, 79, 0.5);
-  border-radius: 28px; padding: 10px 24px; color: #ff7a7c; font-size: 1rem; cursor: pointer; transition: all .25s ease;
-}
-.cancel-btn:hover { background: rgba(255, 77, 79, 0.28); }
-.cancel-btn i { margin-right: 8px; }
-.end-call-btn {
-  background: #ff4d4f; border: none; border-radius: 50%;
-  width: 70px; height: 70px; display: grid; place-items: center;
-  color: #fff; font-size: 1.6rem; cursor: pointer; box-shadow: 0 10px 26px rgba(255, 77, 79, 0.35);
-  transition: transform .2s ease;
-}
-.end-call-btn:hover { transform: scale(1.05); }
-@keyframes popIn { from { opacity: 0; transform: translateY(26px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+* { box-sizing: border-box; }
 
 .container {
-  max-width: 1400px; margin: 0 auto;
-  background: var(--panel-solid);
-  border: 1px solid var(--ring);
-  border-radius: 18px;
-  box-shadow: 0 10px 34px rgba(0,0,0,.10);
+  max-width: 1450px;
+  margin: 24px auto;
+  /* background: #fff; */
+  /* border: 1px solid #ddd; */
+  /* border-radius: 12px; */
+  /* box-shadow: 0 6px 18px rgba(0,0,0,.1); */
   overflow: hidden;
 }
 
-.controls {
-  padding: 20px 40px;
-  display: flex; flex-wrap: wrap; gap: 20px; align-items: center;
-  border-bottom: 1px solid var(--ring);
-  background: var(--panel);
-}
-
-.search-box { flex: 1; max-width: 520px; position: relative; }
-.search-box input {
-  width: 100%; padding: 14px 20px 14px 48px;
-  border-radius: 12px; border: 1px solid var(--ring);
-  font-size: 1rem; background: var(--panel-solid); color: var(--text);
-}
-.search-box input::placeholder { color: var(--muted); }
-.search-box input:focus {
-  outline: none; border-color: var(--brand);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent);
-}
-.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
-
-.filter-select {
-  padding: 12px 16px; border-radius: 12px; border: 1px solid var(--ring);
-  background: var(--panel-solid); color: var(--text); font-size: 1rem; cursor: pointer;
-}
-
-.section-title {
-  padding: 18px 40px 10px;
-  font-size: 1.45rem; font-weight: 600; color: var(--text);
-  display: flex; align-items: center; gap: 10px;
-}
-
 .call-surface {
-  display: grid;
-  grid-template-columns: 420px 1fr;
-  gap: 24px;
-  padding: 24px 40px 36px;
-  background: radial-gradient(1200px 600px at 30% -10%, #1a2748, #0b1224 60%, #070c18 100%);
-  color: #e6eeff;
-  min-height: 520px;
-  border-top: 1px solid var(--ring);
+  display: flex;
+  flex-direction: column;
+  background: transparent; /* remove solid black */
+  border-radius: 0;
+  overflow: visible;
+  gap: 20px; /* 👈 creates spacing between call + chat */
 }
-@media (max-width: 980px) { .call-surface { grid-template-columns: 1fr; } }
 
 .call-center {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 28px 22px;
-  text-align: center;
+  width: 90%;
+  background: #0b2038;
+  border-radius: 12px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  color: #fff;
+  height: 600px;
 }
-.vid-avatar {
-  width: 160px; height: 160px; border-radius: 16px;
-  display: grid; place-items: center;
-  background: linear-gradient(135deg, #4a6fa5, #1a73e8);
-  color: #fff; font-size: 4rem;
-  box-shadow: 0 12px 28px rgba(0,0,0,.35);
-  margin-bottom: 16px;
+/* Layout for both sections */
+.call-layout {
+  display: flex;
+  gap: 105px;
+  justify-content: center;
+  align-items: flex-start;
 }
-.call-title {
-  margin: 0 0 8px; font-size: 1.4rem; font-weight: 600; color: #fff;
+
+/* Sidebar styling */
+.call-sidebar {
+  width: 170px;/* increased from 220px */
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* margin: 10px; */
 }
-.call-timer-big {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 12px; border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  font-weight: 600; color: #cfe2ff; margin-bottom: 18px;
+
+.call-sidebar .sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 40px 14px 40px 14px;
+  font-size: 15px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.2s;
+}
+
+.call-sidebar .sidebar-item i {
+  color: #2a66b2;
+  font-size: 18px;
+}
+
+.call-sidebar .sidebar-item:hover {
+  background: #f5f7fb;
+}
+
+.call-sidebar .active {
+  background: #2a66b2;
+  color: #fff;
+}
+
+.call-sidebar .active i {
+  color: #fff;
+}
+
+.call-sidebar .view-all {
+  background: #2a66b2;
+  color: #fff;
+  padding: 20px;
+  border: none;
+  border-radius: 0 0 8px 8px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.call-sidebar .view-all:hover {
+  background: #204d89;
+}
+
+.vid-avatar { 
+  width: 140px; 
+  height: 140px; 
+  border-radius: 50%; 
+  overflow: hidden;
+  border: 3px solid #444;
+  margin-bottom: 12px;
+  background: #111;  
+}
+
+.vid-avatar img,
+.vid-avatar i {
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover;
+  font-size: 4rem;
+  color: #1a73e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.call-title { 
+  margin: 6px 0; 
+  font-size: 1.3rem; 
+  font-weight: 600; 
+  color: #fff; 
+}
+
+.call-timer-big { 
+  margin-bottom: 14px; 
+  font-weight: 600; 
+  color: #ccc; 
 }
 .call-cta-row {
-  display: inline-flex;
-  grid-template-columns: repeat(5, minmax(90px, 1fr)); /* was 4 */
-  gap: 14px; margin-top: 6px; width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 16px;
 }
+
+.round-cta span { 
+  display: none;   
+}
+
 .round-cta {
-  display: grid; place-items: center; gap: 6px;
-  background: rgba(255,255,255,.10);
-  border: 1px solid rgba(255,255,255,.14);
-  border-radius: 16px; padding: 16px 10px; color: #e6eeff;
-  cursor: pointer; transition: transform .15s ease, background .2s ease;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  border: none;
+  cursor: pointer;
+  background: #1f2937;  
+  color: #fff;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
-.round-cta i { font-size: 1.4rem; }
-.round-cta:hover { transform: translateY(-2px); background: rgba(255,255,255,.18); }
-.round-cta.end { background: #ff4d4f; border-color: #ff4d4f; }
-.round-cta.end:hover { filter: brightness(1.05); }
-.round-cta.consult { background: #1a73e8; border-color: #1a73e8; }
+
+.round-cta i { font-size: 1.2rem; }
+.round-cta:hover {
+  transform: scale(1.05);
+  background: #374151;   
+}
+.round-cta.end { background: #ef4444; }
+.round-cta.consult { background: #1a73e8; }
 
 .chat-wrap {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
   padding: 16px;
-  display: flex; flex-direction: column;
-  min-height: 420px;
+  width: 82%;
 }
-.bubble-list {
-  overflow: auto;
-  padding: 6px;
-  display: flex; flex-direction: column; gap: 10px;
-  max-height: 540px;
-}
-.bubble {
-  max-width: 78%;
-  padding: 10px 12px;
-  border-radius: 14px;
-  position: relative;
-  line-height: 1.35;
-  word-wrap: break-word;
-}
-.bubble[data-role="assistant"] {
-  align-self: flex-start;
-  background: #0f2246;
-  border: 1px solid rgba(86,144,255,.35);
-  color: #e8f0ff;
-}
-.bubble[data-role="user"] {
-  align-self: flex-end;
-  background: #1a4d2e;
-  border: 1px solid rgba(51, 225, 131, .35);
-  color: #dbffec;
-}
-.bubble-meta {
-  font-size: .75rem;
-  opacity: .65;
-  margin-bottom: 4px;
-}
-.bubble-text { font-size: .96rem; }
-.cap-interim { opacity: .6; font-style: italic; }
 
-.upload-row {
-  display: flex; align-items: center; gap: 10px;
-  align-self: stretch; margin: 6px 2px 2px;
+.bubble-list { 
+  flex: 1;
+  overflow-y: auto; 
+  padding: 8px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 10px; 
+  max-height: 360px;
 }
-.attach-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(255,255,255,.08);
-  border: 1px dashed rgba(255,255,255,.24);
-  padding: 10px 12px; border-radius: 12px;
-  cursor: pointer; user-select: none; font-weight: 600; color: #e6eeff;
+
+.bubble { 
+  max-width: 75%; 
+  padding: 10px 14px; 
+  border-radius: 16px; 
+  font-size: 0.95rem; 
+  line-height: 1.4; 
 }
+
+.bubble[data-role="assistant"] { 
+  align-self: flex-start; 
+  background: #e9f2ff; 
+  color: #111; 
+}
+
+.bubble[data-role="user"] { 
+  align-self: flex-end; 
+  background: #1a73e8; 
+  color: #fff; 
+}
+
+.bubble-meta { 
+  font-size: .75rem; 
+  opacity: .65; 
+  margin-bottom: 2px; 
+}
+
+.upload-row { 
+  margin: 10px 0; 
+}
+
+.attach-btn { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  padding: 8px 12px; 
+  border: 1px dashed #1a73e8; 
+  border-radius: 8px; 
+  background: #fff; 
+  color: #1a73e8; 
+  cursor: pointer; 
+  font-size: 0.9rem;
+}
+
 .attach-btn input { display: none; }
-.upload-status { opacity: .8; font-size: .9rem; }
+.upload-status { font-size: 0.85rem; color: #555; margin-left: 10px; }
 
-.doctor-grid { display: grid; gap: 24px; padding: 10px 40px 30px; grid-template-columns: 1fr; }
+.chat-composer { 
+  display: flex; 
+  gap: 8px; 
+  border-top: 1px solid #eee; 
+  padding-top: 10px; 
+}
+
+.chat-composer input { 
+  flex: 1; 
+  padding: 10px; 
+  border: 1px solid #ddd; 
+  border-radius: 8px; 
+}
+
+.send-btn { 
+  background: #1a73e8; 
+  color: #fff; 
+  border: none; 
+  border-radius: 8px; 
+  padding: 0 16px; 
+  cursor: pointer; 
+}
+
+.section-title { 
+  padding: 18px 24px 10px; 
+  font-size: 1.4rem; 
+  font-weight: 600; 
+  color: #111; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+}
+
+.doctor-grid { 
+  display: grid; 
+  gap: 16px; 
+  padding: 16px 40px 28px; 
+  grid-template-columns: 1fr; 
+}
 @media (min-width: 768px) { .doctor-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .doctor-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1400px) { .doctor-grid { grid-template-columns: repeat(4, 1fr); } }
 
 .doctor-card {
-  background: var(--panel-solid); border-radius: 14px; overflow: hidden;
-  display: flex; flex-direction: column; height: 100%;
-  border: 1px solid var(--ring);
-  box-shadow: 0 8px 22px rgba(0,0,0,.08);
-  transition: transform .18s ease, box-shadow .18s ease;
+  width: auto;
+  height: 360px;
+  background: #FFFFFF;
+  box-shadow: 0px 4px 24px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  transition: transform .15s, box-shadow .2s;
 }
-.doctor-card:hover { transform: translateY(-3px); box-shadow: 0 14px 36px rgba(0,0,0,.12); }
-
-.doctor-header {
-  background: linear-gradient(120deg, #4975c8, #1a73e8);
-  color: #fff; padding: 16px;
-  display: flex; align-items: center; gap: 12px;
-}
-:global(html.dark) .doctor-header {
-  background: linear-gradient(120deg, #3f68b5, #195fd1);
+.doctor-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
 }
 
 .doctor-avatar {
-  width: 56px; height: 56px; border-radius: 12px;
-  background: rgba(255, 255, 255, 0.2);
-  display: grid; place-items: center; font-size: 1.5rem;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 16px;
 }
-.doctor-info { flex: 1; }
-.doctor-name { font-size: 1.06rem; font-weight: 600; letter-spacing: .2px; }
-.doctor-specialty { font-size: .93rem; opacity: .95; margin-top: 2px; }
-
-.doctor-details { padding: 14px 16px 8px; flex: 1; }
-.detail-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: .95rem; color: var(--text); }
-.detail-icon { color: var(--brand); width: 22px; text-align: center; }
-.availability {
-  display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px;
-  border-top: 1px dashed var(--ring); font-size: .9rem;
-  color: color-mix(in srgb, var(--brand) 25%, var(--text));
-}
-.availability-dot {
-  width: 10px; height: 10px; border-radius: 50%; background: #22c55e;
-  box-shadow: 0 0 0 4px color-mix(in srgb, #22c55e 20%, transparent);
+.doctor-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.doctor-actions { display: flex; gap: 10px; padding: 12px 14px 16px; }
-.doctor-actions .btn { flex: 1 1 0; min-width: 0; white-space: nowrap; text-align: center; }
-
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  border: none; border-radius: 12px; font-size: .95rem; font-weight: 600;
-  cursor: pointer; padding: 10px 12px; flex: 1;
-  transition: transform .15s ease, box-shadow .15s ease, background .2s ease;
+.doctor-details {
+  text-align: center;
+  margin-bottom: 16px;
 }
-.btn i { margin-right: 8px; }
-.btn--call {
-  background: #22c55e; color: #fff;
-  box-shadow: 0 4px 10px color-mix(in srgb, #22c55e 35%, transparent);
-}
-.btn--call:hover { background: #16a34a; box-shadow: 0 6px 14px color-mix(in srgb, #16a34a 40%, transparent); }
-.btn--book {
-  background: #ef4444; color: #fff !important; text-decoration: none;
-  box-shadow: 0 4px 12px color-mix(in srgb, #ef4444 35%, transparent);
-}
-.btn--book:hover { background: #dc2626; box-shadow: 0 6px 16px color-mix(in srgb, #dc2626 40%, transparent); }
 
-.active-call {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  background: var(--panel-solid); color: #ddd;
-  padding: 12px 16px; border-radius: 12px; border: 1px solid var(--ring);
-  display: flex; align-items: center; gap: 12px;
-  box-shadow: 0 10px 24px rgba(0,0,0,.22);
-  z-index: 100;
+.doctor-details .detail-item {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 28px;
+  color: #222222;
+  margin-bottom: 12px;
 }
-.active-call__text { margin: 0; font-size: .94rem; }
-.call-info { display: flex; align-items: center; gap: 10px; }
-.call-timer { font-size: .9rem; }
-.btn--end { background: #ff4d4f; color: #fff; border: none; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
 
-.status { text-align: center; padding: 14px; font-size: 1rem; color: #e6eeff; }
-.loading { display: inline-flex; align-items: center; gap: 5px; color: #a9b7e7; }
-.loading-dots span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin: 0 2px; animation: pulse 1.5s infinite; }
-.loading-dots span:nth-child(2) { animation-delay: .5s; }
-.loading-dots span:nth-child(3) { animation-delay: 1s; }
-@keyframes pulse { 0%, 60%, 100% { opacity: .35; transform: scale(.75); } 30% { opacity: 1; transform: scale(1); } }
+.doctor-details .availability {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: #868686;
+}
 
-.fade-in { animation: fadeIn .45s ease-out forwards; opacity: 0; }
-@keyframes fadeIn { to { opacity: 1; } }
+.availability-dot { 
+  width: 10px; 
+  height: 10px; 
+  border-radius: 50%; 
+  background: #28a745; 
+  box-shadow: 0 0 0 4px rgba(34,197,94,.15); 
+}
+
+.doctor-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+}
+
+.doctor-actions .btn--call {
+  width: 220px;
+  height: 49px;
+  background: #27548B;
+  color: #FFFFFF;
+  border-radius: 6px;
+  border: none;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 19px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.doctor-actions .btn--call:hover {
+  background: #1d3f68;
+}
+.status { 
+  text-align: center; 
+  padding: 14px; 
+  font-size: 1rem; 
+  color: #555; 
+}
+.call-popup-overlay {
+  position: fixed;
+  inset: 0; 
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.call-popup {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.call-popup .call-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.call-popup .call-avatar {
+  font-size: 2rem;
+  color: #1a73e8;
+}
+
+.call-popup .call-info h3 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.call-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.end-call-btn {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
 </style>
+

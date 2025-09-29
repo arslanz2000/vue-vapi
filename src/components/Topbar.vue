@@ -35,20 +35,50 @@
     </div>
 
     <!-- User chip -->
-    <div class="user-chip" aria-label="Account">
-      <img src="https://api.dicebear.com/7.x/initials/svg?seed=AK" alt="" />
-      <span>Arslan</span>
+    <div v-if="user" class="user-chip" aria-label="Account">
+      <img :src="avatarUrl" alt="User avatar" />
+      <span>{{ initials }}</span>
+      <button class="ghost small" @click="logout">Logout</button>
     </div>
   </header>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from "vue"
+
+const props = defineProps({
   pageTitle: { type: String, default: '' },
   sidebarOpen: { type: Boolean, default: true },
-  theme: { type: String, default: 'light' }, // 'light' | 'dark'
+  theme: { type: String, default: 'light' }
 })
-defineEmits(['toggleSidebar', 'toggleTheme', 'navigate'])
+
+const emit = defineEmits(['toggleSidebar', 'toggleTheme', 'navigate'])
+
+// ✅ Get user object from localStorage
+const user = JSON.parse(localStorage.getItem("user") || "{}")
+
+// Compute initials
+const initials = computed(() => {
+  if (!user?.name) return "U"
+  return user.name
+    .split(" ")
+    .map(n => n[0])
+    .join("")
+    .toUpperCase()
+})
+
+// Avatar with Dicebear initials
+const avatarUrl = computed(() =>
+  `https://api.dicebear.com/7.x/initials/svg?seed=${initials.value}`
+)
+
+// ✅ Logout clears storage and navigates back
+function logout() {
+  localStorage.removeItem("authToken")
+  localStorage.removeItem("user")
+  localStorage.removeItem("currentView")
+  emit("navigate", "login")
+}
 </script>
 
 <style scoped>
@@ -85,7 +115,6 @@ defineEmits(['toggleSidebar', 'toggleTheme', 'navigate'])
   font: inherit;
 }
 
-/* THEME-AWARE ghost button */
 .ghost {
   border: 1px solid var(--ring);
   background: var(--ghost-bg);
@@ -98,7 +127,6 @@ defineEmits(['toggleSidebar', 'toggleTheme', 'navigate'])
   line-height: 0;
 }
 
-/* Primary button uses brand gradient */
 .primary {
   border: 0;
   background: linear-gradient(135deg, var(--brand), var(--brand-2));
@@ -132,4 +160,11 @@ defineEmits(['toggleSidebar', 'toggleTheme', 'navigate'])
   margin-left: 8px;
 }
 .user-chip img { width: 24px; height: 24px; border-radius: 50%; }
+
+.user-chip button.small {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  margin-left: 6px;
+  border-radius: 8px;
+}
 </style>

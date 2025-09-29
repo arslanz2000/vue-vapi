@@ -1,81 +1,100 @@
 <template>
-  <aside class="sidebar" :class="{ open }">
+  <aside class="sidebar" :class="{ open }" :aria-expanded="String(open)">
     <div class="brand">
-      <div class="brand-mark"><i class="fas fa-user-md" /></div>
+      <div class="brand-mark"><i class="fas fa-user-md" aria-hidden="true" /></div>
       <div class="brand-text">
         <h1>AI Doctors</h1>
         <span>AI Health Suite</span>
       </div>
     </div>
 
-    <nav class="nav">
+    <nav class="nav" aria-label="Primary">
       <p class="nav-label">General</p>
 
       <button
+        type="button"
         class="nav-btn"
         :class="{ active: currentView === 'home' }"
-        @click="$emit('navigate', 'home')"
+        :aria-current="currentView === 'home' ? 'page' : undefined"
+        @click="emit('navigate', 'home')"
       >
-        <i class="fas fa-home"></i>
+        <i class="fas fa-home" aria-hidden="true"></i>
         <span>Dashboard</span>
       </button>
 
       <button
+        type="button"
         class="nav-btn"
         :class="{ active: currentView === 'doctors' }"
-        @click="$emit('navigate', 'doctors')"
+        :aria-current="currentView === 'doctors' ? 'page' : undefined"
+        @click="emit('navigate', 'doctors')"
       >
-        <i class="fas fa-user-nurse"></i>
+        <i class="fas fa-user-nurse" aria-hidden="true"></i>
         <span>Voice Agents</span>
-        <span class="chip">{{ countDoctors }}</span>
+        <span class="chip" :aria-label="`${countDoctors} doctors available`">{{ countDoctors }}</span>
       </button>
-      <!-- <button
+
+      <!-- Chatbots -->
+      <button
+        type="button"
         class="nav-btn"
         :class="{ active: currentView === 'chatbots' }"
-        @click="$emit('navigate', 'chatbots')"
-       >
-        <i class="fas fa-comments"></i>
-        <span>All Chatbots</span>
-        <span class="chip">17</span>
-      </button> -->
-      <button
-        class="nav-btn coming-soon"
-        :class="{ active: currentView === 'chatbots' }"
-        aria-disabled="true"
-        title="Coming soon"
-        @click.stop.prevent
-        data-badge="Coming soon"
+        :aria-current="currentView === 'chatbots' ? 'page' : undefined"
+        @click="emit('navigate', 'chatbots')"
       >
-        <i class="fas fa-comments"></i>
+        <i class="fas fa-robot" aria-hidden="true"></i>
         <span>Chatbots</span>
-        <span class="chip">17</span>
       </button>
+
+      <!-- NEW: X-rays & MRI -->
+      <button
+        type="button"
+        class="nav-btn"
+        :class="{ active: currentView === 'xrays' }"
+        :aria-current="currentView === 'xrays' ? 'page' : undefined"
+        @click="emit('navigate', 'xrays')"
+      >
+        <i class="fas fa-file-medical" aria-hidden="true"></i>
+        <span>X-rays & MRI</span>
+        <span
+          v-if="typeof countRadiology === 'number'"
+          class="chip"
+          :aria-label="`${countRadiology} tools available`"
+        >{{ countRadiology }}</span>
+      </button>
+
       <p class="nav-label">Shortcuts</p>
-      <button class="nav-btn" @click="$emit('navigate', 'doctors')">
-        <i class="fas fa-stethoscope"></i>
+      <button type="button" class="nav-btn" @click="emit('navigate', 'doctors')">
+        <i class="fas fa-stethoscope" aria-hidden="true"></i>
         <span>Start Consultation</span>
       </button>
     </nav>
 
     <div class="sidebar-footer">
       <div class="foot-card">
-        <i class="fas fa-bolt"></i>
+        <i class="fas fa-bolt" aria-hidden="true"></i>
         <div>
           <strong>Quick Access</strong>
           <p>Jump to AI physicians</p>
         </div>
-        <button class="foot-cta" @click="$emit('navigate', 'doctors')">Open</button>
+        <button type="button" class="foot-cta" @click="emit('navigate', 'doctors')">Open</button>
       </div>
     </div>
   </aside>
 </template>
 
-<script setup>
-defineProps({
-  currentView: { type: String, default: 'home' },
-  open: { type: Boolean, default: true },
-  countDoctors: { type: Number, default: 17 },
-})
+<script setup lang="ts">
+const emit = defineEmits<{
+  (e:'navigate', v:'home'|'doctors'|'chatbots'|'xrays'): void
+}>()
+
+defineProps<{
+  currentView?: 'home' | 'doctors' | 'chatbots' | 'xrays'
+  open?: boolean
+  countDoctors?: number
+  /** optional chip for the new X-rays & MRI item */
+  countRadiology?: number
+}>()
 </script>
 
 <style>
