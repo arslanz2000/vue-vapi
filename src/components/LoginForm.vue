@@ -12,6 +12,9 @@
         Don’t have an account?
         <a href="#" @click.prevent="emit('navigate', 'signup')">Sign Up</a>
       </p>
+      <button type="button" class="btn-google" @click="loginWithGoogle">
+        Continue with Google
+      </button>
     </form>
   </div>
 </template>
@@ -49,6 +52,10 @@ const handleLogin = async () => {
     alert("Login failed. Please check your credentials.");
   }
 };
+const loginWithGoogle = () => {
+  window.location.href = "https://dashboard.evomations.com/auth/google";
+};
+
 </script>
 
 <style scoped>
@@ -126,4 +133,31 @@ const handleLogin = async () => {
 .switch a:hover {
   text-decoration: underline;
 }
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #444;
+  font-weight: 500;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.btn-google:hover {
+  background: #f7f8f8;
+  transform: translateY(-1px);
+}
+
+.btn-google img {
+  width: 20px;
+  height: 20px;
+}
+
 </style>

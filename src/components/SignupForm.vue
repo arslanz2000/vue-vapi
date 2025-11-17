@@ -9,6 +9,12 @@
       <input v-model="password_confirmation" type="password" placeholder="Confirm Password" required />
       
       <button type="submit" class="btn-primary">Sign Up</button>
+
+      <div class="divider">or</div>
+
+      <button type="button" class="btn-google" @click="registerWithGoogle">
+        Sign up with Google
+      </button>
       
       <p class="switch">
         Already have an account?
@@ -44,6 +50,10 @@ const handleRegister = async () => {
     console.error(err.response?.data || err);
   }
 };
+const registerWithGoogle = () => {
+  window.location.href = "https://dashboard.evomations.com/auth/google";
+};
+
 </script>
 
 <style scoped>
@@ -122,4 +132,50 @@ const handleRegister = async () => {
 .switch a:hover {
   text-decoration: underline;
 }
+.divider {
+  text-align: center;
+  margin: 10px 0;
+  color: #888;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #ddd;
+}
+
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #444;
+  font-weight: 500;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-google:hover {
+  background: #f7f8f8;
+  transform: translateY(-1px);
+}
+
+.btn-google img {
+  width: 20px;
+  height: 20px;
+}
+
 </style>

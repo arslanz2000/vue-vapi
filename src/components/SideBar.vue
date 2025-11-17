@@ -114,6 +114,8 @@ defineProps<{
   top: 0;
   height: 100vh;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .brand {
@@ -151,8 +153,9 @@ defineProps<{
   color: var(--muted);
   font-size: .75rem;
   letter-spacing: .04em;
-  margin: 18px 8px 8px;
+  margin: 40px 8px 8px;
   text-transform: uppercase;
+  flex-grow: 1;
 }
 
 .nav-btn {

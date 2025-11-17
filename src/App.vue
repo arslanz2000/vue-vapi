@@ -459,32 +459,99 @@ html.dark .title-art {
 .stat .meta span { font-size: .86rem; color: var(--muted); }
 
 /* ---------- Panel ---------- */
+/* ---------- Get Started Panel ---------- */
 .panel {
-  padding: 18px;
-  border: 1px solid var(--ring);
-  background: var(--panel);
-  -webkit-backdrop-filter: var(--glass);
-  backdrop-filter: var(--glass);
-  border-radius: 16px;
-  box-shadow: var(--shadow-1);
+  position: relative;
+  padding: 28px 32px;
+  border-radius: 18px;
+  border: 1px solid rgba(37,99,235,0.12);
+  background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
+
+html.dark .panel {
+  background: linear-gradient(145deg, rgba(17,24,39,0.9) 0%, rgba(15,23,42,0.9) 100%);
+  border: 1px solid rgba(59,130,246,0.25);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+.panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(37,99,235,0.12);
+}
+
+/* Header */
 .panel-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
 }
-.panel h3 { margin: 0; letter-spacing: -.01em; }
+
+.panel h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel h3::before {
+  content: "✨";
+  font-size: 1.1rem;
+}
+
+/* Quick tips badge */
 .badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: .78rem; color: var(--brand);
-  background: rgba(37,99,235,.08);
-  border: 1px solid rgba(37,99,235,.22);
-  padding: 6px 10px; border-radius: 999px;
+  font-size: 0.8rem;
+  background: var(--brand);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: 0 3px 8px rgba(37,99,235,0.3);
+  border: none;
 }
+
+/* Steps list */
 .steps {
-  list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; color: var(--muted);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
 }
-.steps li { display: flex; gap: 10px; align-items: center; }
-.steps i { width: 18px; text-align: center; color: var(--brand); }
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+  background: rgba(37,99,235,0.05);
+  padding: 10px 14px;
+  border-radius: 10px;
+  transition: background 0.25s;
+}
+
+.steps li:hover {
+  background: rgba(37,99,235,0.12);
+}
+
+.steps i {
+  color: var(--brand);
+  font-size: 1rem;
+}
+
+.steps em {
+  font-weight: 600;
+  color: var(--brand-2);
+  font-style: normal;
+}
+
 
 /* Loading card */
 .loading-card {

@@ -1,84 +1,166 @@
 <template>
   <div class="container">
-<section v-if="callActive" class="call-surface">
-<div class="call-layout">
-  <!-- Existing Call Center -->
-<div class="call-center"> 
-  <div class="vid-avatar"> 
-    <i class="fas fa-user-md"></i>
-   </div> 
-   <h2 class="call-title">{{ currentDoctorName }}</h2> 
-   <div class="call-timer-big"> <i class="fas fa-clock"></i> {{ callTimer }} </div> 
-   <div class="call-cta-row"> 
-    <button class="round-cta" @click="toggleMute"> 
-      <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i> 
-    </button>
-     <button class="round-cta" @click="toggleSpeaker">
-       <i class="fas" :class="isSpeakerOn ? 'fa-volume-up' : 'fa-volume-mute'"></i>
-     </button> 
-     <button class="round-cta" @click="toggleHold">
-       <i class="fas" :class="isOnHold ? 'fa-play' : 'fa-pause'"></i> 
-    </button>
-     <button class="round-cta end" @click="stopCall">
-       <i class="fas fa-phone-slash"></i> 
-      </button> 
-    <button class="round-cta consult" @click="openConsultation"> 
-      <i class="fas fa-calendar-alt"></i>
-     </button> 
-  </div> 
-</div>
+    <section v-if="callActive" class="call-surface">
+      <div class="call-layout">
+        <!-- Existing Call Center -->
+        <div class="call-center">
+          <div style="display: flex;">
+            <div class="doctor-name">
+              <h2 class="call-title">
+                {{ currentDoctorName.replace(/\(.*\)/, '').trim() }}
+                <span v-if="/\((.*)\)/.test(currentDoctorName)">
+                  {{ currentDoctorName.match(/\((.*)\)/)[0] }}
+                </span>
+              </h2>
+            </div>
+            <div class="listening-pill">
+              <span>Listening</span>
+              <div class="bars">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+          <div class="doctor-profile">
+            <div class="vid-avatar">
+              <img src="/src/assets/image_doc.png" />
+            </div>
+            <div class="call-timer-big"> <i class="fas fa-clock"></i> {{ callTimer }} </div>
+          </div>
+          <div class="call-cta-row">
+            <button class="round-cta" @click="toggleMute">
+              <i class="fas" :class="isMuted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
+            </button>
+            <button class="round-cta" @click="toggleSpeaker">
+              <i class="fas" :class="isSpeakerOn ? 'fa-volume-up' : 'fa-volume-mute'"></i>
+            </button>
+            <button class="round-cta" @click="toggleHold">
+              <i class="fas" :class="isOnHold ? 'fa-play' : 'fa-pause'"></i>
+            </button>
+            <button class="round-cta end" @click="stopCall">
+              <i class="fas fa-phone-slash"></i>
+            </button>
+            <button class="round-cta consult" @click="openConsultation">
+              <i class="fas fa-calendar-alt"></i>
+            </button>
+          </div>
+        </div>
 
-  <!-- Sidebar Section -->
-  <div class="call-sidebar">
-    <div class="sidebar-item active">
-      <i class="fas fa-stethoscope"></i>
-      <span>General Checkup</span>
-    </div>
-    <div class="sidebar-item">
-      <i class="fas fa-heartbeat"></i>
-      <span>Cardiogram</span>
-    </div>
-    <div class="sidebar-item">
-      <i class="fas fa-vials"></i>
-      <span>Lab Test</span>
-    </div>
-    <div class="sidebar-item">
-      <i class="fas fa-tint"></i>
-      <span>Blood Bank</span>
-    </div>
-    <button class="view-all">View All</button>
+<!-- Sidebar with fixed height and scroll -->
+<div class="call-sidebar">
+  <div class="sidebar-content">
+    <template v-if="latestSummary">
+      <div class="sidebar-item active">
+        <i class="fas fa-user-md"></i>
+        <span>{{ latestSummary.doctor_name || 'Recent Consultation' }}</span>
+      </div>
+
+      <div class="sidebar-item">
+        <i class="fas fa-stethoscope"></i>
+        <span>{{ latestSummary.key_symptoms || 'Key symptoms not available' }}</span>
+      </div>
+
+      <div class="sidebar-item">
+        <i class="fas fa-heartbeat"></i>
+        <span>{{ latestSummary.observations || 'Observations not available' }}</span>
+      </div>
+
+      <div class="sidebar-item">
+        <i class="fas fa-vials"></i>
+        <span>{{ latestSummary.recommendations || 'Recommendations not available' }}</span>
+      </div>
+
+      <div class="sidebar-item">
+        <i class="fas fa-tint"></i>
+        <span>{{ latestSummary.follow_up || 'Follow-up not available' }}</span>
+      </div>
+    </template>
+
+    <template v-else>
+      <div class="sidebar-item active">
+        <i class="fas fa-stethoscope"></i>
+        <span>General Checkup</span>
+      </div>
+      <div class="sidebar-item">
+        <i class="fas fa-heartbeat"></i>
+        <span>Cardiogram</span>
+      </div>
+      <div class="sidebar-item">
+        <i class="fas fa-vials"></i>
+        <span>Lab Test</span>
+      </div>
+      <div class="sidebar-item">
+        <i class="fas fa-tint"></i>
+        <span>Blood Bank</span>
+      </div>
+    </template>
   </div>
+
+  <button class="view-all" @click="showAllSummaries">Show All</button>
+</div>
 </div>
 
+        <div class="chat-wrap">
+          <div class="bubble-list" ref="captionsEl" aria-live="polite" aria-atomic="false">
+            <div v-for="(c, i) in captions" :key="c.ts + '-' + i" class="bubble" :data-role="c.role">
+              <div class="bubble-meta">{{ c.role === 'assistant' ? 'Doctor' : 'You' }}</div>
+              <div class="bubble-text">{{ c.text }}</div>
+            </div>
 
-  <div class="chat-wrap">
-    <div class="bubble-list" ref="captionsEl" aria-live="polite" aria-atomic="false">
-      <div v-for="(c, i) in captions" :key="c.ts + '-' + i" class="bubble" :data-role="c.role">
-        <div class="bubble-meta">{{ c.role === 'assistant' ? 'Doctor' : 'You' }}</div>
-        <div class="bubble-text">{{ c.text }}</div>
+            <div class="upload-row">
+              <label class="attach-btn">
+                <i class="fas fa-file-upload"></i>
+                <span>Send PDF or Image(s)</span>
+                <input type="file" accept="application/pdf,image/*" multiple @change="handleDocsToCall" />
+              </label>
+              <small v-if="uploadingDoc" class="upload-status">{{ uploadStatus }}</small>
+            </div>
+          </div>
+
+          <form class="chat-composer" @submit.prevent="sendChat">
+            <input type="text" v-model="chatText" placeholder="Type a message to the doctor…"
+              :disabled="!callActive || sending" />
+            <button class="btn send-btn" :disabled="!chatText.trim() || sending">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+    </section>
+<!-- ✅ 3rd Section: Show all summaries list -->
+<section v-if="showAllMode" class="all-summaries-section">
+  <div class="summaries-header">
+    <h2><i class="fas fa-notes-medical"></i> All Consultation Summaries</h2>
+    <button class="back-btn" @click="backToLatest">
+      <i class="fas fa-arrow-left"></i> Back
+    </button>
+  </div>
+
+  <div v-if="allSummaries.length" class="summaries-grid">
+    <div v-for="summary in allSummaries" :key="summary.id" class="summary-card">
+      <h3 class="summary-title">
+        <i class="fas fa-user-md"></i>
+        {{ summary.doctor?.name || summary.doctor_name || 'Unknown Doctor' }}
+      </h3>
+
+      <div class="summary-info">
+        <p><strong>Key Symptoms:</strong> {{ summary.key_symptoms || '—' }}</p>
+        <p><strong>Observations:</strong> {{ summary.observations || '—' }}</p>
+        <p><strong>Recommendations:</strong> {{ summary.recommendations || '—' }}</p>
+        <p><strong>Follow-up:</strong> {{ summary.follow_up || '—' }}</p>
       </div>
 
-      <div class="upload-row">
-        <label class="attach-btn">
-          <i class="fas fa-file-upload"></i>
-          <span>Send PDF or Image(s)</span>
-          <input type="file" accept="application/pdf,image/*" multiple @change="handleDocsToCall" />
-        </label>
-        <small v-if="uploadingDoc" class="upload-status">{{ uploadStatus }}</small>
+      <div class="summary-meta">
+        <i class="fas fa-calendar-alt"></i>
+        {{ new Date(summary.created_at).toLocaleDateString() }}
       </div>
     </div>
+  </div>
 
-    <form class="chat-composer" @submit.prevent="sendChat">
-      <input
-        type="text"
-        v-model="chatText"
-        placeholder="Type a message to the doctor…"
-        :disabled="!callActive || sending"
-      />
-      <button class="btn send-btn" :disabled="!chatText.trim() || sending">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    </form>
+  <div v-else class="no-summaries">
+    <i class="fas fa-folder-open"></i>
+    <p>No summaries found yet.</p>
   </div>
 </section>
 
@@ -89,15 +171,11 @@
         Available AI Physicians
       </h2>
       <section class="doctor-grid">
-        <div
-          v-for="(doctor, index) in filteredDoctors"
-          :key="doctor.id"
-          class="doctor-card fade-in"
-          :style="{ 'animation-delay': `${index * 0.05}s` }"
-        >
+        <div v-for="(doctor, index) in filteredDoctors" :key="doctor.id" class="doctor-card fade-in"
+          :style="{ 'animation-delay': `${index * 0.05}s` }">
           <header class="doctor-header">
             <div class="doctor-avatar">
-               <img src="@/assets/image_doc.png" alt="Doctor" />
+              <img src="@/assets/image_doc.png" alt="Doctor" />
             </div>
           </header>
 
@@ -112,11 +190,8 @@
           </div>
 
           <footer class="doctor-actions">
-            <button
-              class="btn btn--call"
-              @click="startCall(doctor)"
-              :disabled="callActive && activeDoctorId === doctor.id"
-            >
+            <button class="btn btn--call" @click="startCall(doctor)"
+              :disabled="callActive && activeDoctorId === doctor.id">
               <i class="fas fa-phone-alt"></i>
               {{ (callActive && activeDoctorId === doctor.id) ? 'In Call...' : 'Start AI Consultation' }}
             </button>
@@ -145,14 +220,12 @@
           </div>
         </div>
         <div class="call-actions" style="gap:12px">
-          <button class="end-call-btn"
-                  @click="downloadPdfReport"
-                  :disabled="summarizing"
-                  aria-label="Summarize & Download">
-            <i class="fas" :class="summarizing ? 'fa-spinner fa-spin' : 'fa-file-alt'"></i>
+          <button class="end-call-btn" @click="downloadPdfReport" :disabled="summarizing"
+            aria-label="Summarize & Download">
+            <i class="fas" :class="summarizing ? 'fa-spinner fa-spin' : 'fa-file-download'"></i>
           </button>
           <button class="cancel-btn" @click="showTranscriptPrompt = false">
-            <i class="fas fa-times"></i> Dismiss
+            <i class="fas fa-times"></i>
           </button>
         </div>
       </div>
@@ -168,6 +241,7 @@ import Tesseract from 'tesseract.js'
 import { jsPDF } from 'jspdf'
 import axios from "axios"
 
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
   import.meta.url
@@ -180,6 +254,10 @@ let vapi
 const assistantMuted = ref(false)
 const canSendControls = ref(false)
 const controlQueue = []
+const showAllMode = ref(false);
+const allSummaries = ref([]);
+const allSummariesSection = ref(null);
+
 
 function flushControls() {
   if (!vapi) return
@@ -224,6 +302,7 @@ const doctors = ref([
 
 const OPENAI_MODEL = 'gpt-4o-mini'
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
+const BACKEND_API_KEY = import.meta.env.VITE_API_BASE_URL
 
 const callActive = ref(false)
 const activeDoctorId = ref(null)
@@ -300,7 +379,7 @@ async function saveSummary(doctorId, summaryText) {
   const token = localStorage.getItem("token");
   try {
     await axios.post(
-      "http://127.0.0.1:3000/api/summaries",
+      `${BACKEND_API_KEY}/summaries`,
       {
         doctor_id: doctorId,
         summary: summaryText,
@@ -314,6 +393,52 @@ async function saveSummary(doctorId, summaryText) {
     console.error("❌ Failed to save summary:", err.response?.data || err);
   }
 }
+
+const latestSummary = ref(null);
+const sidebarSections = ref([]);
+
+
+async function fetchLatestSummary() {
+  const token = localStorage.getItem("token");
+  try {
+    const { data } = await axios.get(`${BACKEND_API_KEY}/summaries/latest`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (data) {
+      latestSummary.value = data;
+
+      // Parse summary text into sections dynamically
+      const summaryText = data.summary;
+
+      sidebarSections.value = [
+        {
+          title: "Key Points",
+          icon: "fas fa-stethoscope",
+        },
+        {
+          title: "Observations",
+          icon: "fas fa-heartbeat",
+        },
+        {
+          title: "Suggestions",
+          icon: "fas fa-vials",
+        },
+        {
+          title: "Next Steps",
+          icon: "fas fa-tint",
+        },
+      ];
+
+      // You can enhance this by parsing summaryText if it's structured
+    } else {
+      latestSummary.value = null;
+    }
+  } catch (err) {
+    console.error("❌ Failed to fetch latest summary:", err.response?.data || err);
+  }
+}
+
 
 async function sendChat() {
   const text = chatText.value.trim()
@@ -460,12 +585,12 @@ const handleCallEnd = () => {
 
 function openConsultation() {
   suppressSummaryPopup.value = true
-  try { vapi?.stop() } catch (_) {}
+  try { vapi?.stop() } catch (_) { }
   window.open(CONSULTATION_URL, '_blank', 'noopener')
 }
 
 const stopCall = () => {
-  try { vapi?.stop() } catch (_) {}
+  try { vapi?.stop() } catch (_) { }
   handleCallEnd();
 
   // collect transcript into single text
@@ -473,7 +598,8 @@ const stopCall = () => {
 
   // save summary in DB
   if (activeDoctorId.value && transcript) {
-    saveSummary(activeDoctorId.value, transcript);
+    saveSummary(activeDoctorId.value, transcript)
+     .then(() => fetchLatestSummary());
   }
 };
 
@@ -506,7 +632,7 @@ async function downloadPdfReport() {
     const maxW = pageW - margin * 2
     let y = margin
 
-    const BRAND = { r: 26, g: 115, b: 232 }       
+    const BRAND = { r: 26, g: 115, b: 232 }
     const MUTED = 120
 
     doc.setFillColor(BRAND.r, BRAND.g, BRAND.b)
@@ -526,29 +652,29 @@ async function downloadPdfReport() {
     divider()
 
     y = section('Key Points Discussed', sections.key_points, y)
-    y = section('Observations',          sections.observations, y)
-    y = section('Suggestions',           sections.suggestions, y)
-    y = section('Next Steps / Follow-up',sections.next_steps, y)
+    y = section('Observations', sections.observations, y)
+    y = section('Suggestions', sections.suggestions, y)
+    y = section('Next Steps / Follow-up', sections.next_steps, y)
 
     const notes = sections.important_notes?.length
       ? sections.important_notes
       : [
-          'This report is auto-generated from a virtual conversation.',
-          'It is not a diagnosis or a substitute for in-person medical care.',
-          'Seek urgent care if symptoms worsen or new severe symptoms develop.'
-        ]
+        'This report is auto-generated from a virtual conversation.',
+        'It is not a diagnosis or a substitute for in-person medical care.',
+        'Seek urgent care if symptoms worsen or new severe symptoms develop.'
+      ]
     y = section('Important Notes', notes, y)
     addPageNumbers()
 
     const safeDoc = doctor.replace(/[^\w\-]+/g, '_')
-    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-')
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
     doc.save(`${safeDoc}__${stamp}__consultation.pdf`)
     showTranscriptPrompt.value = false
 
     function infoRow(label, value) {
       const chipH = 10
       const chipW = (pageW - margin * 2) / 3 - 4
-      const idx = ['Physician','Started','Duration'].indexOf(label)
+      const idx = ['Physician', 'Started', 'Duration'].indexOf(label)
       const x = margin + idx * (chipW + 6)
       doc.setDrawColor(220); doc.setFillColor(248, 249, 255)
       doc.setFontSize(8); doc.setTextColor(MUTED)
@@ -565,7 +691,7 @@ async function downloadPdfReport() {
     }
 
     function ensureSpace(linesNeeded = 1) {
-      const need = linesNeeded * 6 + 14 
+      const need = linesNeeded * 6 + 14
       if (y + need > pageH - margin) {
         doc.addPage(); y = margin + 2
       }
@@ -574,8 +700,8 @@ async function downloadPdfReport() {
     function section(title, bulletsArr, yy) {
       y = yy
       ensureSpace(3)
-      doc.setFillColor(240, 244, 255); doc.setDrawColor(220) 
-      doc.roundedRect(margin, y, maxW, 10, 2, 2, 'FD') 
+      doc.setFillColor(240, 244, 255); doc.setDrawColor(220)
+      doc.roundedRect(margin, y, maxW, 10, 2, 2, 'FD')
       doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
       doc.setTextColor(BRAND.r, BRAND.g, BRAND.b)
       doc.text(title, margin + 4, y + 7)
@@ -620,15 +746,15 @@ function buildHeuristicSections(lines) {
   const isShort = (s) => (s || '').split(/\s+/).length <= 2
   const dedupe = (arr) => Array.from(new Set(arr.map(t => String(t).trim()))).filter(Boolean)
   const userU = lines.filter(l => l.role !== 'assistant').map(l => l.text).filter(t => !isShort(t))
-  const docU  = lines.filter(l => l.role === 'assistant').map(l => l.text).filter(t => !isShort(t))
+  const docU = lines.filter(l => l.role === 'assistant').map(l => l.text).filter(t => !isShort(t))
   const obsKw = /(seem|observ|finding|exam|likely|stable|normal|abnormal|range|vitals|labs?|scan|imaging|x-?ray|mri|ct)/i
   const recKw = /(should|recommend|advise|consider|monitor|avoid|increase|decrease|start|stop|take|use|apply|dose|dosage)/i
   const nextKw = /(next|follow[- ]?up|schedule|book|test|lab|scan|referr|see|appointment|blood|results|recheck|review)/i
   return {
-    key_points: dedupe([ ...userU.slice(0, 4), ...docU.slice(0, 2) ]).slice(0, 8),
+    key_points: dedupe([...userU.slice(0, 4), ...docU.slice(0, 2)]).slice(0, 8),
     observations: dedupe(docU.filter(t => obsKw.test(t))).slice(0, 10),
     suggestions: dedupe(docU.filter(t => recKw.test(t))).slice(0, 12),
-    next_steps:  dedupe(docU.filter(t => nextKw.test(t))).slice(0, 10),
+    next_steps: dedupe(docU.filter(t => nextKw.test(t))).slice(0, 10),
     important_notes: [
       'This report is auto-generated from a virtual conversation.',
       'It is not a diagnosis or a substitute for in-person medical care.',
@@ -650,7 +776,7 @@ function getSanitizedLines() {
 
 function toConversationText(lines, maxChars = 18000) {
   let s = lines.map(l => `${l.role === 'assistant' ? 'Doctor' : 'Patient'}: ${l.text}`).join('\n')
-  if (s.length > maxChars) s = '…\n' + s.slice(-maxChars) 
+  if (s.length > maxChars) s = '…\n' + s.slice(-maxChars)
   return s
 }
 
@@ -714,6 +840,26 @@ ${convoText}
     next_steps: ensure(json.next_steps),
     important_notes: ensure(json.important_notes),
   }
+}
+async function showAllSummaries() {
+  showAllMode.value = true; 
+  const token = localStorage.getItem("token");
+  try {
+    const { data } = await axios.get(`${BACKEND_API_KEY}/summaries`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    allSummaries.value = data || [];
+    await nextTick();
+    if (allSummariesSection.value) {
+      allSummariesSection.value.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  } catch (err) {
+    console.error("❌ Failed to fetch all summaries:", err.response?.data || err);
+  }
+}
+
+function backToLatest() {
+  showAllMode.value = false;
 }
 
 const toggleMute = () => { isMuted.value = !isMuted.value; isMuted.value ? vapi.mute() : vapi.unmute() }
@@ -821,7 +967,7 @@ onMounted(() => {
   vapi.on('status-update', (m) => {
     const blob = JSON.stringify(m).toLowerCase()
     if (!canSendControls.value &&
-        (blob.includes('join') || blob.includes('joined') || blob.includes('connected') || blob.includes('ready'))) {
+      (blob.includes('join') || blob.includes('joined') || blob.includes('connected') || blob.includes('ready'))) {
       canSendControls.value = true
       flushControls()
       flushMessages()
@@ -870,21 +1016,29 @@ onMounted(() => {
 
   status.value = 'Platform initialized. Select a doctor to start a session.'
   setTimeout(() => (status.value = ''), 5000)
+
+  fetchLatestSummary();
 })
 
 onBeforeUnmount(() => {
-  try { vapi?.stop?.() } catch (_) {}
+  try { vapi?.stop?.() } catch (_) { }
   clearInterval(timerInterval)
 })
 </script>
 
 <style scoped>
+* {
+  box-sizing: border-box;
+}
 
-* { box-sizing: border-box; }
+html {
+  scroll-behavior: smooth;
+}
+
 
 .container {
   max-width: 1450px;
-  margin: 24px auto;
+  margin: 0px auto 24px;
   /* background: #fff; */
   /* border: 1px solid #ddd; */
   /* border-radius: 12px; */
@@ -895,10 +1049,10 @@ onBeforeUnmount(() => {
 .call-surface {
   display: flex;
   flex-direction: column;
-  background: transparent; /* remove solid black */
+  background: transparent;
   border-radius: 0;
   overflow: visible;
-  gap: 20px; /* 👈 creates spacing between call + chat */
+  gap: 20px;
 }
 
 .call-center {
@@ -908,48 +1062,62 @@ onBeforeUnmount(() => {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   color: #fff;
-  height: 600px;
+  height: 670px;
 }
-/* Layout for both sections */
+
 .call-layout {
   display: flex;
-  gap: 105px;
+  gap: 50px;
   justify-content: center;
   align-items: flex-start;
 }
 
-/* Sidebar styling */
 .call-sidebar {
-  width: 170px;/* increased from 220px */
+  width: 205px;
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* margin: 10px; */
+  height: 670px;             
+  overflow: hidden;
+  position: relative;
+}
+.call-sidebar .sidebar-content {
+  flex: 1;
+  overflow-y: auto;            
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
 }
 
+.call-sidebar .sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+.call-sidebar .sidebar-content::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
 .call-sidebar .sidebar-item {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 40px 14px 40px 14px;
-  font-size: 15px;
+  padding: 15px 14px;
+  font-size: 13px;
+  font-style: italic;
   color: #333;
   border-bottom: 1px solid #eee;
   cursor: pointer;
-  display: flex;
   flex-direction: column;
   transition: background 0.2s;
+  text-align: center;
 }
 
 .call-sidebar .sidebar-item i {
   color: #2a66b2;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .call-sidebar .sidebar-item:hover {
@@ -980,20 +1148,20 @@ onBeforeUnmount(() => {
   background: #204d89;
 }
 
-.vid-avatar { 
-  width: 140px; 
-  height: 140px; 
-  border-radius: 50%; 
+.vid-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
   overflow: hidden;
   border: 3px solid #444;
   margin-bottom: 12px;
-  background: #111;  
+  background: #111;
 }
 
 .vid-avatar img,
 .vid-avatar i {
-  width: 100%; 
-  height: 100%; 
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   font-size: 4rem;
   color: #1a73e8;
@@ -1002,27 +1170,52 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-.call-title { 
-  margin: 6px 0; 
-  font-size: 1.3rem; 
-  font-weight: 600; 
-  color: #fff; 
+.doctor-profile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
-.call-timer-big { 
-  margin-bottom: 14px; 
-  font-weight: 600; 
-  color: #ccc; 
+.doctor-name {
+  background: #000000;
+  width: 300px;
+  padding: 10px 25px;
+  border-radius: 50px;
+  margin-top: 15px;
 }
+
+.call-title {
+  margin: 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  display: inline-block;
+
+}
+
+.call-title span {
+  color: #ffeb3b;
+  font-weight: 700;
+}
+
+.call-timer-big {
+  margin-bottom: 14px;
+  font-weight: 600;
+  color: #ccc;
+}
+
 .call-cta-row {
   display: flex;
   justify-content: center;
   gap: 20px;
-  margin-top: 16px;
+  margin-top: auto;
+  margin-bottom: 16px;
 }
 
-.round-cta span { 
-  display: none;   
+.round-cta span {
+  display: none;
 }
 
 .round-cta {
@@ -1035,125 +1228,152 @@ onBeforeUnmount(() => {
   font-size: 1.3rem;
   border: none;
   cursor: pointer;
-  background: #1f2937;  
+  background: #1f2937;
   color: #fff;
   transition: background 0.2s ease, transform 0.15s ease;
 }
 
-.round-cta i { font-size: 1.2rem; }
+.round-cta i {
+  font-size: 1.2rem;
+}
+
 .round-cta:hover {
   transform: scale(1.05);
-  background: #374151;   
+  background: #374151;
 }
-.round-cta.end { background: #ef4444; }
-.round-cta.consult { background: #1a73e8; }
+
+.round-cta.end {
+  background: #ef4444;
+}
+
+.round-cta.consult {
+  background: #1a73e8;
+}
 
 .chat-wrap {
   background: #fff;
   border-radius: 12px;
   border: 1px solid #ddd;
-  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .08);
   padding: 16px;
-  width: 82%;
+  width: 100%;
+  margin-top: 20px;
 }
 
-.bubble-list { 
+.bubble-list {
   flex: 1;
-  overflow-y: auto; 
-  padding: 8px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 10px; 
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   max-height: 360px;
 }
 
-.bubble { 
-  max-width: 75%; 
-  padding: 10px 14px; 
-  border-radius: 16px; 
-  font-size: 0.95rem; 
-  line-height: 1.4; 
+.bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
 
-.bubble[data-role="assistant"] { 
-  align-self: flex-start; 
-  background: #e9f2ff; 
-  color: #111; 
+.bubble[data-role="assistant"] {
+  align-self: flex-start;
+  background: #e9f2ff;
+  color: #111;
 }
 
-.bubble[data-role="user"] { 
-  align-self: flex-end; 
-  background: #1a73e8; 
-  color: #fff; 
+.bubble[data-role="user"] {
+  align-self: flex-end;
+  background: #1a73e8;
+  color: #fff;
 }
 
-.bubble-meta { 
-  font-size: .75rem; 
-  opacity: .65; 
-  margin-bottom: 2px; 
+.bubble-meta {
+  font-size: .75rem;
+  opacity: .65;
+  margin-bottom: 2px;
 }
 
-.upload-row { 
-  margin: 10px 0; 
+.upload-row {
+  margin: 10px 0;
 }
 
-.attach-btn { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 6px; 
-  padding: 8px 12px; 
-  border: 1px dashed #1a73e8; 
-  border-radius: 8px; 
-  background: #fff; 
-  color: #1a73e8; 
-  cursor: pointer; 
+.attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px dashed #1a73e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a73e8;
+  cursor: pointer;
   font-size: 0.9rem;
 }
 
-.attach-btn input { display: none; }
-.upload-status { font-size: 0.85rem; color: #555; margin-left: 10px; }
-
-.chat-composer { 
-  display: flex; 
-  gap: 8px; 
-  border-top: 1px solid #eee; 
-  padding-top: 10px; 
+.attach-btn input {
+  display: none;
 }
 
-.chat-composer input { 
-  flex: 1; 
-  padding: 10px; 
-  border: 1px solid #ddd; 
-  border-radius: 8px; 
+.upload-status {
+  font-size: 0.85rem;
+  color: #555;
+  margin-left: 10px;
 }
 
-.send-btn { 
-  background: #1a73e8; 
-  color: #fff; 
-  border: none; 
-  border-radius: 8px; 
-  padding: 0 16px; 
-  cursor: pointer; 
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #eee;
+  padding-top: 10px;
 }
 
-.section-title { 
-  padding: 18px 24px 10px; 
-  font-size: 1.4rem; 
-  font-weight: 600; 
-  color: #111; 
-  display: flex; 
-  align-items: center; 
-  gap: 10px; 
+.chat-composer input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
 }
 
-.doctor-grid { 
-  display: grid; 
-  gap: 16px; 
-  padding: 16px 40px 28px; 
-  grid-template-columns: 1fr; 
+.send-btn {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0 16px;
+  cursor: pointer;
 }
-@media (min-width: 768px) { .doctor-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1024px) { .doctor-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.section-title {
+  padding: 18px 24px 10px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #111;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doctor-grid {
+  display: grid;
+  gap: 50px;
+  padding: 16px 40px 28px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .doctor-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .doctor-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 
 .doctor-card {
   width: auto;
@@ -1164,12 +1384,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px;
+  padding: 50px 16px;
   transition: transform .15s, box-shadow .2s;
 }
+
 .doctor-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
 }
 
 .doctor-avatar {
@@ -1179,6 +1400,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   margin-bottom: 16px;
 }
+
 .doctor-avatar img {
   width: 100%;
   height: 100%;
@@ -1207,12 +1429,12 @@ onBeforeUnmount(() => {
   color: #868686;
 }
 
-.availability-dot { 
-  width: 10px; 
-  height: 10px; 
-  border-radius: 50%; 
-  background: #28a745; 
-  box-shadow: 0 0 0 4px rgba(34,197,94,.15); 
+.availability-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #28a745;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, .15);
 }
 
 .doctor-actions {
@@ -1235,19 +1457,22 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: background 0.2s ease;
 }
+
 .doctor-actions .btn--call:hover {
   background: #1d3f68;
 }
-.status { 
-  text-align: center; 
-  padding: 14px; 
-  font-size: 1rem; 
-  color: #555; 
+
+.status {
+  text-align: center;
+  padding: 14px;
+  font-size: 1rem;
+  color: #555;
 }
+
 .call-popup-overlay {
   position: fixed;
-  inset: 0; 
-  background: rgba(0,0,0,0.65);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1260,7 +1485,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   width: 420px;
   max-width: 90%;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
   animation: fadeIn 0.2s ease-in-out;
 }
 
@@ -1307,8 +1532,173 @@ onBeforeUnmount(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-</style>
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
 
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.listening-pill {
+  background: #000000;
+  color: #fff;
+  padding: 10px 25px;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-top: 15px;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.bars span {
+  display: block;
+  width: 3px;
+  height: 4px;
+  background: #fff;
+  border-radius: 2px;
+  animation: bounce 1s infinite ease-in-out;
+}
+
+.bars span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.bars span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.bars span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.bars span:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+@keyframes bounce {
+
+  0%,
+  100% {
+    height: 4px;
+  }
+
+  50% {
+    height: 14px;
+  }
+}
+
+.all-summaries-section {
+  padding: 40px;
+  background: #f9fbff;
+  min-height: 680px;
+}
+
+.summaries-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.summaries-header h2 {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.back-btn {
+  background: #2a66b2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.back-btn:hover {
+  background: #204d89;
+}
+
+.summaries-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+}
+
+.summary-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.summary-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #27548b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.summary-info {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+.summary-info p {
+  margin: 6px 0;
+}
+
+.summary-meta {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #777;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.no-summaries {
+  text-align: center;
+  padding: 60px;
+  color: #999;
+  font-size: 1rem;
+}
+
+.no-summaries i {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  color: #ccc;
+}
+
+</style>
