@@ -222,9 +222,27 @@ const pageTitle = computed(() => {
 const theme = ref('light') // 'light' | 'dark'
 
 onMounted(() => {
+  const params = new URLSearchParams(window.location.search);
+  const googleToken = params.get("token");
+
+  if (googleToken) {
+    localStorage.setItem("authToken", googleToken);
+    localStorage.setItem("currentView", "home");
+
+    window.history.replaceState({}, "", "/");
+
+    currentView.value = "home";
+    return;
+  }
+
   const token = localStorage.getItem("authToken");
+
+  if (window.location.pathname.includes("auth/google")) {
+    return;
+  }
+
   if (token) {
-    currentView.value = "home";   // ✅ Stay logged in
+    currentView.value = "home";
   }
 });
 

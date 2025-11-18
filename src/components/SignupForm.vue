@@ -51,8 +51,10 @@ const handleRegister = async () => {
   }
 };
 const registerWithGoogle = () => {
+  localStorage.removeItem("authToken");
   window.location.href = "https://dashboard.evomations.com/auth/google";
 };
+
 
 </script>
 
