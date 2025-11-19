@@ -69,7 +69,7 @@ const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const API_URL = 'https://api.openai.com/v1/chat/completions'
 // Vision-capable, affordable model
 const model = 'gpt-4o-mini'
-
+console.log("hihihihih",API_KEY);
 // System prompt so replies sound like a general physician
 const SYSTEM_PROMPT = `You are a licensed general physician. Answer as a doctor would: empathetic, clear, and evidence-based. 
 - Ask concise clarifying questions when needed.
