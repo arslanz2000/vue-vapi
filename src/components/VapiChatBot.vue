@@ -65,7 +65,7 @@
 import { ref, nextTick, computed } from 'vue'
 
 // ====== CONFIG ======
-const API_KEY = process.env.OPENAI_API_KEY;
+const API_KEY = process.env.VITE_OPENAI_API_KEY;
 const API_URL = 'https://api.openai.com/v1/chat/completions'
 // Vision-capable, affordable model
 const model = 'gpt-4o-mini'
