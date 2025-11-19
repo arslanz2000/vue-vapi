@@ -175,7 +175,11 @@
           :style="{ 'animation-delay': `${index * 0.05}s` }">
           <header class="doctor-header">
             <div class="doctor-avatar">
-              <img src="@/assets/image_doc.png" alt="Doctor" />
+              <img 
+                :src="`/${doctor.id}.png`" 
+                :alt="doctor.name"
+                @error="$event.target.src = '/default-doctor.png'"
+              />
             </div>
           </header>
 
