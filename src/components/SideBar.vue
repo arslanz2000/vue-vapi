@@ -47,7 +47,7 @@
       </button>
 
       <!-- NEW: X-rays & MRI -->
-      <button
+      <!-- <button
         type="button"
         class="nav-btn"
         :class="{ active: currentView === 'xrays' }"
@@ -61,7 +61,7 @@
           class="chip"
           :aria-label="`${countRadiology} tools available`"
         >{{ countRadiology }}</span>
-      </button>
+      </button> -->
 
       <p class="nav-label">Shortcuts</p>
       <button type="button" class="nav-btn" @click="emit('navigate', 'doctors')">
