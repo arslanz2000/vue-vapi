@@ -222,8 +222,11 @@ const pageTitle = computed(() => {
 const theme = ref('light') // 'light' | 'dark'
 
 onMounted(() => {
-  const params = new URLSearchParams(window.location.search);
-  const googleToken = params.get("token");
+  // const params = new URLSearchParams(window.location.search);
+  // const googleToken = params.get("token");
+  const params = window.location.href;
+  const googleToken = params.match(/[\?&]token=([^&]+)/);
+  console.log("hiihi",googleToken);
 
   if (googleToken) {
     localStorage.setItem("authToken", googleToken);
