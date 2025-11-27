@@ -1,5 +1,7 @@
 <template>
-  <div class="app-shell">
+  <!-- <div class="app-shell"> -->
+    <div class="app-shell" :class="{ 'sidebar-closed': !sidebarOpen }">
+
     <!-- Sidebar (hide on signup/login) -->
     <Sidebar
       v-if="currentView !== 'signup' && currentView !== 'login'"
@@ -218,23 +220,20 @@ const pageTitle = computed(() => {
   }
 })
 
-/* THEME */
-const theme = ref('light') // 'light' | 'dark'
+const theme = ref('light')
 
 onMounted(() => {
-  // const params = new URLSearchParams(window.location.search);
-  // const googleToken = params.get("token");
   const params = window.location.href;
   const googleToken = params.match(/[\?&]token=([^&]+)/);
   console.log("hiihi",googleToken);
 
   if (googleToken) {
     localStorage.setItem("authToken", googleToken);
-    localStorage.setItem("currentView", "home");
+    localStorage.setItem("currentView", "doctors");
 
     window.history.replaceState({}, "", "/");
 
-    currentView.value = "home";
+    currentView.value = "doctors";
     return;
   }
 
@@ -245,7 +244,7 @@ onMounted(() => {
   }
 
   if (token) {
-    currentView.value = "home";
+    currentView.value = "doctors";
   }
 });
 
@@ -255,10 +254,8 @@ watch(theme, (val) => {
 })
 </script>
 
-<!-- GLOBAL (UNSCOPED) THEME VARIABLES + GLOBAL FONT -->
 <style>
 :root {
-  /* Surface & text tokens */
   --bg: linear-gradient(180deg, #f7f9ff 0%, #f9fbff 35%, #f6f8fb 100%);
   --panel: rgba(255,255,255,0.7);
   --panel-solid: #ffffff;
@@ -267,34 +264,27 @@ watch(theme, (val) => {
   --text: #0f172a;
   --muted: #64748b;
 
-  /* Brand */
   --brand: #2563eb;
   --brand-2: #1a73e8;
   --accent: #14b8a6;
 
-  /* Shadows & rings */
   --shadow-1: 0 10px 30px rgba(2, 12, 27, .06);
   --shadow-2: 0 22px 50px rgba(2, 12, 27, .10);
   --ring: #d7dde7;
 
-  /* Ghost buttons */
   --ghost-bg: #f8fafc;
   --ghost-bg-hover: #eef2f7;
 }
 
-/* ✅ Global default font (icons safe) */
 html, body, #app {
   font-family: Arial, Helvetica, "Segoe UI", sans-serif;
   color: var(--text);
 }
 
-/* Smooth fonts */
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-/* Ensure form controls inherit */
 button, input, select, textarea { font: inherit; }
 
-/* Dark theme */
 html.dark {
   --bg: linear-gradient(180deg, #0b1220 0%, #0b1324 100%);
   --panel: rgba(17,24,39,0.45);
@@ -323,18 +313,16 @@ html.dark {
   border-radius: 10px;
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 </style>
 
-<!-- LOCAL (SCOPED) LAYOUT STYLES -->
 <style scoped>
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
-* { box-sizing: border-box; }
-html, body, #app { height: 100%; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #app { height: 100%; overflow-x: hidden; }
 
 /* Shell */
 .app-shell {
@@ -343,10 +331,16 @@ html, body, #app { height: 100%; }
   min-height: 100vh;
   background: var(--bg);
   position: relative;
+  transition: grid-template-columns 0.3s ease;
+  min-width: 0; /* Prevent grid blowout */
 }
 
 /* Main */
-.main { display: grid; grid-template-rows: auto 1fr auto; }
+.main { 
+  display: grid; 
+  grid-template-rows: auto 1fr auto;
+  min-width: 0; /* Important: prevents grid overflow */
+}
 
 /* Content container */
 .content {
@@ -356,6 +350,7 @@ html, body, #app { height: 100%; }
   margin: 0 auto;
   display: grid;
   gap: 22px;
+  min-width: 0; /* Prevent content overflow */
 }
 
 /* ---------- Header / Hero ---------- */
@@ -370,6 +365,7 @@ html, body, #app { height: 100%; }
   backdrop-filter: var(--glass);
   border-radius: 18px;
   box-shadow: var(--shadow-1);
+  width: 100%;
 }
 
 .title-wrap .eyebrow {
@@ -445,7 +441,7 @@ html.dark .title-art {
 /* ---------- Stats ---------- */
 .home {
   display: grid;
-  gap: 22px;              /* was implicit / none */
+  gap: 22px;
 }
 .stats {
   display: grid;
@@ -480,7 +476,6 @@ html.dark .title-art {
 .stat .meta span { font-size: .86rem; color: var(--muted); }
 
 /* ---------- Panel ---------- */
-/* ---------- Get Started Panel ---------- */
 .panel {
   position: relative;
   padding: 28px 32px;
@@ -573,7 +568,6 @@ html.dark .panel {
   font-style: normal;
 }
 
-
 /* Loading card */
 .loading-card {
   display: flex; align-items: center; gap: 10px; padding: 16px;
@@ -593,47 +587,193 @@ html.dark .panel {
   width: 54px; height: 54px; border-radius: 50%;
   display: grid; place-items: center;
   background: linear-gradient(135deg,var(--brand),var(--brand-2));
-  color: #fff; box-shadow: var(--shadow-2); display: none;
+  color: #fff; box-shadow: var(--shadow-2); 
+  z-index: 100;
+  display: none;
 }
 
-/* Responsive */
+/* Desktop / laptop sidebar collapse */
+.app-shell.sidebar-closed {
+  grid-template-columns: 1fr;
+}
+
+/* ========== RESPONSIVE DESIGN ========== */
+
+/* Large desktop */
 @media (max-width: 1200px) {
   .app-shell { grid-template-columns: 260px 1fr; }
+  .app-shell.sidebar-closed { grid-template-columns: 1fr; }
+  .content { padding: 24px; }
 }
+
+/* Desktop */
 @media (max-width: 1024px) {
   .page-header { grid-template-columns: 1fr; }
   .title-art { min-height: 160px; }
 }
-@media (max-width: 960px)  { .app-shell { grid-template-columns: 76px 1fr; } }
-@media (max-width: 768px)  {
-  .stats { grid-template-columns: 1fr; }
+
+/* Tablet */
+@media (max-width: 960px)  { 
+  .app-shell { grid-template-columns: 76px 1fr; }
+  .app-shell.sidebar-closed { grid-template-columns: 1fr; }
+  .content { padding: 20px; }
 }
+
+/* Small tablet */
+@media (max-width: 768px)  {
+  .stats { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .content { padding: 18px; gap: 20px; }
+}
+
+/* Mobile - FIXED SIDEBAR ISSUES */
 @media (max-width: 720px)  {
-  .app-shell { grid-template-columns: 1fr; }
+  .app-shell { 
+    grid-template-columns: 1fr !important; /* Force single column */
+  }
+  
+  .app-shell.sidebar-closed {
+    grid-template-columns: 1fr !important; /* Ensure consistency */
+  }
+  
+  /* Improved mobile sidebar */
   :deep(.sidebar) {
-    position: fixed; left: 0; transform: translateX(-100%);
-    transition: transform .2s ease; z-index: 50; width: 260px; background: var(--panel);
-    border-right: 1px solid var(--ring);
+    position: fixed; 
+    left: 0; 
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform .3s ease; 
+    z-index: 1000; 
+    width: 280px;
+    background: var(--panel-solid);
+    border-right: 1px solid var(--border);
     -webkit-backdrop-filter: var(--glass);
     backdrop-filter: var(--glass);
+    box-shadow: var(--shadow-2);
   }
-  :deep(.sidebar.open) { transform: translateX(0); }
-  .fab { display: grid; }
+  
+  :deep(.sidebar.open) { 
+    transform: translateX(0); 
+  }
+  
+  /* Overlay when sidebar is open */
+  .app-shell::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(2px);
+  }
+  
+  .app-shell:has(:deep(.sidebar.open))::before {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  /* Show FAB on mobile */
+  .fab { 
+    display: grid; 
+  }
+  
+  /* Mobile content adjustments */
+  .content {
+    padding: 16px;
+    gap: 18px;
+    width: 100%;
+  }
+  
+  .page-header {
+    padding: 20px;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.75rem;
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .stats {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .content {
+    padding: 12px;
+    gap: 16px;
+  }
+  
+  .page-header {
+    padding: 16px;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.5rem;
+  }
+  
+  .panel {
+    padding: 20px;
+  }
+  
+  .stats {
+    gap: 12px;
+  }
+  
+  .stat {
+    padding: 14px;
+  }
+}
+
+/* Extra small mobile */
+@media (max-width: 360px) {
+  .content {
+    padding: 10px;
+  }
+  
+  .page-header {
+    padding: 14px;
+  }
+  
+  .title-wrap h1 {
+    font-size: 1.35rem;
+  }
+  
+  .hero-actions .btn {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Ensure content area doesn't get squeezed on very small screens */
+.main {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
 .content {
-  max-width: 100%;      /* remove 1200px lock */
-  margin: 0;            /* remove horizontal centering */
-  padding: 24px;        /* balanced padding */
-  display: grid;
-  gap: 24px;
-}
-
-/* Hero header ko thoda zyada expand hone do */
-.page-header {
+  max-width: 100%;
   width: 100%;
+  min-width: 0;
 }
 
-/* Stats row ko full stretch pe thoda better spacing do */
+/* Stats responsive behavior */
 .stats {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 20px;

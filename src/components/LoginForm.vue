@@ -13,6 +13,7 @@
         <a href="#" @click.prevent="emit('navigate', 'signup')">Sign Up</a>
       </p>
       <button type="button" class="btn-google" @click="loginWithGoogle">
+          <i class="fab fa-google google-multi"></i>
         Continue with Google
       </button>
     </form>
@@ -22,6 +23,7 @@
 <script setup>
 import { ref } from "vue";
 import { login } from "../services/auth";
+import { toast } from "vue3-toastify";
 
 const emit = defineEmits(["navigate"]);
 
@@ -30,26 +32,20 @@ const password = ref("");
 
 const handleLogin = async () => {
   try {
-    // Call API
     const response = await login(email.value, password.value);
 
-    console.log("Logged in:", response);
-
-    // ✅ Save token + user in localStorage
     localStorage.setItem("authToken", response.token);
     localStorage.setItem("user", JSON.stringify({
       name: response.name || "User",
       email: response.email || email.value,
     }));
 
-    // Save view state
-    localStorage.setItem("currentView", "home");
-
-    // ✅ Redirect to dashboard
-    emit("navigate", "home");
+    localStorage.setItem("currentView", "doctors");
+    toast.success("Login successful!");
+    emit("navigate", "doctors");
   } catch (err) {
     console.error(err.response?.data || err);
-    alert("Login failed. Please check your credentials.");
+    toast.error("Login failed. Please check your credentials.");
   }
 };
 const loginWithGoogle = () => {
@@ -72,7 +68,17 @@ const loginWithGoogle = () => {
   top: 0;
   left: 0;
 }
-
+.google-multi {
+  font-size: 22px;
+  background: conic-gradient(
+    #4285F4 0deg 90deg,
+    #34A853 90deg 180deg,
+    #FBBC05 180deg 270deg,
+    #EA4335 270deg 360deg
+  );
+  -webkit-background-clip: text;
+  color: transparent;
+}
 .auth-form {
   width: 100%;
   max-width: 380px;
@@ -161,5 +167,4 @@ const loginWithGoogle = () => {
   width: 20px;
   height: 20px;
 }
-
 </style>

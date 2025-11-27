@@ -13,6 +13,7 @@
       <div class="divider">or</div>
 
       <button type="button" class="btn-google" @click="registerWithGoogle">
+        <i class="fab fa-google google-multi"></i>
         Sign up with Google
       </button>
       
@@ -27,6 +28,7 @@
 <script setup>
 import { ref } from "vue";
 import { register } from "../services/auth";
+import { toast } from "vue3-toastify";
 
 const emit = defineEmits(["navigate"]);
 
@@ -43,11 +45,25 @@ const handleRegister = async () => {
       password.value,
       password_confirmation.value
     );
-    console.log("Registered:", user);
-
+  toast.success("Account created successfully! Please log in.");
     emit("navigate", "login"); 
   } catch (err) {
     console.error(err.response?.data || err);
+
+    const errors = err.response?.data?.errors;
+    const message = err.response?.data?.message;
+    if (errors) {
+      Object.values(errors).forEach(errorArray => {
+        errorArray.forEach(msg => toast.error(msg));
+      });
+      return;
+    }
+    if (message) {
+      toast.error(message);
+      return;
+    }
+
+    toast.error("Registration failed. Please try again.");
   }
 };
 const registerWithGoogle = () => {
@@ -64,14 +80,24 @@ const registerWithGoogle = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;          /* take full viewport height */
-  width: 100vw;           /* take full viewport width */
-  background: var(--bg);  /* match app background */
-  position: fixed;        /* overlay, ignore .content grid */
+  height: 100vh;
+  width: 100vw;
+  background: var(--bg);
+  position: fixed;
   top: 0;
   left: 0;
 }
-
+.google-multi {
+  font-size: 22px;
+  background: conic-gradient(
+    #4285F4 0deg 90deg,
+    #34A853 90deg 180deg,
+    #FBBC05 180deg 270deg,
+    #EA4335 270deg 360deg
+  );
+  -webkit-background-clip: text;
+  color: transparent;
+}
 .auth-form {
   width: 100%;
   max-width: 380px;

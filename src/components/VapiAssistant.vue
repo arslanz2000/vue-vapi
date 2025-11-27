@@ -2,7 +2,6 @@
   <div class="container">
     <section v-if="callActive" class="call-surface">
       <div class="call-layout">
-        <!-- Existing Call Center -->
         <div class="call-center">
           <div style="display: flex;">
             <div class="doctor-name">
@@ -48,7 +47,6 @@
           </div>
         </div>
 
-<!-- Sidebar with fixed height and scroll -->
 <div class="call-sidebar">
   <div class="sidebar-content">
     <template v-if="latestSummary">
@@ -128,7 +126,7 @@
           </form>
         </div>
     </section>
-<!-- ✅ 3rd Section: Show all summaries list -->
+
 <section v-if="showAllMode" class="all-summaries-section">
   <div class="summaries-header">
     <h2><i class="fas fa-notes-medical"></i> All Consultation Summaries</h2>
@@ -168,8 +166,11 @@
     <template v-else>
       <h2 class="section-title">
         <i class="fas fa-user-md"></i>
-        Available AI Physicians
+        Meet Your AI Doctors      
       </h2>
+      <p class="new-c">
+        Expert care, powered by AI. Get instant guidance from specialists across every major field; ready to answer your health questions anytime.
+      </p>
       <section class="doctor-grid">
         <div v-for="(doctor, index) in filteredDoctors" :key="doctor.id" class="doctor-card fade-in"
           :style="{ 'animation-delay': `${index * 0.05}s` }">
@@ -189,7 +190,7 @@
             </div>
             <div class="availability">
               <span class="availability-dot" />
-              <span>Available now for consultation</span>
+              <span>{{ specialtyDescriptions[doctor.specialty] || 'Available for consultation' }}</span>
             </div>
           </div>
 
@@ -280,6 +281,27 @@ function flushControls() {
     }
   }
 }
+const specialtyDescriptions = {
+  "ENT Specialist": "Support for ear, nose, and throat issues like allergies, sinus trouble, and infections.",
+  "Dentistry": "Quick guidance on tooth pain, cavities, gum health, and oral hygiene.",
+  "Urology": "Help with urinary tract concerns, kidney issues, and men’s health.",
+  "Endocrinology": "Advice on hormone health, thyroid conditions, and diabetes management.",
+  "Cardiology": "Heart health insights, from blood pressure concerns to chest discomfort.",
+  "Neurology": "Support for headaches, nerve pain, memory, and neurological conditions.",
+  "Pulmonology": "Guidance on breathing issues, asthma, and lung health.",
+  "Gastroenterology": "Digestive health support, including stomach pain, reflux, and IBS.",
+  "Oncology": "Information and support related to cancer risks, symptoms, and treatments.",
+  "Psychiatry": "Mental health insights for stress, anxiety, depression, and emotional well-being.",
+  "Psychologist": "Guidance for emotional wellness, behavior, and coping strategies.",
+  "Orthopedics": "Guidance on bones, joints, and musculoskeletal injuries.",
+  "Infectology": "Helps treat infections, fevers, and prevent them.",
+  "Dermatology": "Skin health advice for rashes, acne, and other conditions.",
+  "Ophthalmology": "Eye care guidance, from vision issues to eye infections.",
+  "Hematology": "Support for blood-related conditions and clotting concerns.",
+  "Nutritionist": "Advice on diet, nutrition, and healthy lifestyle choices.",
+  "Pediatrician": "Care and guidance for infants, children, and adolescents.",
+  "General Physician": "First contact for common health concerns and overall guidance."
+};
 
 const doctors = ref([
   { id: 'dr-david', name: 'Dr. David Chen', specialty: 'Cardiology', assistantId: 'ba2f0969-4750-4190-a91f-2c5dc814bced' },
@@ -298,7 +320,7 @@ const doctors = ref([
   { id: 'dr-emma', name: 'Dr. Emma Thompson', specialty: 'Urology', assistantId: '6a266708-6b19-4b92-92ad-832a2e960abd' },
   { id: 'dr-ellie', name: 'Dr. Ellie Clark', specialty: 'ENT Specialist', assistantId: '16cd535c-8137-40c8-aa94-40e19c103648' },
   { id: 'dr-michael', name: 'Dr. Michael Wright', specialty: 'Neurology', assistantId: '1c964479-ebe7-4fe7-b446-acb23173664e' },
-  { id: 'dr-sophie', name: 'Dr. Sophie Martinez', specialty: 'General Practice', assistantId: '13e6ca08-cec8-4bff-816e-e5fbad4a633c' },
+  { id: 'dr-sophie', name: 'Dr. Sophie Martinez', specialty: 'General Physician', assistantId: '13e6ca08-cec8-4bff-816e-e5fbad4a633c' },
   { id: 'dr-mark', name: 'Dr Mark', specialty: 'Pediatrician', assistantId: 'f5d3b472-62b7-42da-93e9-945af243dbf8' },
   { id: 'dr-lucy', name: 'Dr Lucy', specialty: 'Nutritionist', assistantId: '62107efe-3686-4974-80ac-6b61f17fc589' },
   { id: 'dr-anne', name: 'Dr Anne', specialty: 'Psychologist', assistantId: 'e4cb63da-8ae6-4f08-8f78-25ad8cc981df' },
@@ -411,8 +433,6 @@ async function fetchLatestSummary() {
 
     if (data) {
       latestSummary.value = data;
-
-      // Parse summary text into sections dynamically
       const summaryText = data.summary;
 
       sidebarSections.value = [
@@ -433,8 +453,6 @@ async function fetchLatestSummary() {
           icon: "fas fa-tint",
         },
       ];
-
-      // You can enhance this by parsing summaryText if it's structured
     } else {
       latestSummary.value = null;
     }
@@ -596,11 +614,7 @@ function openConsultation() {
 const stopCall = () => {
   try { vapi?.stop() } catch (_) { }
   handleCallEnd();
-
-  // collect transcript into single text
   const transcript = finalTranscript.value.map(m => `${m.role}: ${m.text}`).join("\n");
-
-  // save summary in DB
   if (activeDoctorId.value && transcript) {
     saveSummary(activeDoctorId.value, transcript)
      .then(() => fetchLatestSummary());
@@ -1043,10 +1057,6 @@ html {
 .container {
   max-width: 1450px;
   margin: 0px auto 24px;
-  /* background: #fff; */
-  /* border: 1px solid #ddd; */
-  /* border-radius: 12px; */
-  /* box-shadow: 0 6px 18px rgba(0,0,0,.1); */
   overflow: hidden;
 }
 
@@ -1359,7 +1369,9 @@ html {
   align-items: center;
   gap: 10px;
 }
-
+.new-c {
+   padding: 1px 40px 10px;
+}
 .doctor-grid {
   display: grid;
   gap: 50px;
@@ -1388,7 +1400,7 @@ html {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 50px 16px;
+  padding: 50px 30px;
   transition: transform .15s, box-shadow .2s;
 }
 
@@ -1437,8 +1449,6 @@ html {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #28a745;
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, .15);
 }
 
 .doctor-actions {

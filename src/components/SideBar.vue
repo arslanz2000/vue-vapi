@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar" :class="{ open }" :aria-expanded="String(open)">
+  <aside class="sidebar" :class="{ open: !open }" :aria-expanded="String(open)">
     <div class="brand">
       <div class="brand-mark"><i class="fas fa-user-md" aria-hidden="true" /></div>
       <div class="brand-text">
@@ -84,17 +84,21 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, defineAsyncComponent, watch, onMounted } from 'vue'
 const emit = defineEmits<{
   (e:'navigate', v:'home'|'doctors'|'chatbots'|'xrays'): void
 }>()
 
-defineProps<{
+const props = defineProps<{
   currentView?: 'home' | 'doctors' | 'chatbots' | 'xrays'
   open?: boolean
   countDoctors?: number
   /** optional chip for the new X-rays & MRI item */
   countRadiology?: number
 }>()
+onMounted(() => {
+ console.log("hiiii", props.open);
+});
 </script>
 
 <style>
@@ -123,6 +127,7 @@ defineProps<{
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  padding: 16px;
 }
 .brand-mark {
   width: 44px;
@@ -148,6 +153,7 @@ defineProps<{
   display: grid;
   gap: 8px;
   margin-top: 8px;
+  padding: 16px;
 }
 .nav-label {
   color: var(--muted);
@@ -194,6 +200,7 @@ defineProps<{
 
 .sidebar-footer {
   margin-top: auto;
+  padding: 16px;
 }
 
 .foot-card {
@@ -258,5 +265,8 @@ html.dark .foot-cta {
   color: #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   pointer-events: none;   /* bubble itself isn’t interactive */
+}
+.open {
+  display: none;
 }
 </style>
